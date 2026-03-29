@@ -18,6 +18,9 @@ let pacmanRightImage;
 
 let wallImage;
 
+let smallCherryImage;
+let bigCherryImage;
+
 const tileMap = [
     "XXXXXXXXXXXXXXXXXXX",
     "X        X        X",
@@ -45,6 +48,7 @@ const tileMap = [
 const walls=new Set();
 const foods=new Set();
 const ghosts=new Set();
+const cherries=new Set();
 
 let pacman;
 
@@ -97,12 +101,18 @@ function loadImages(){
     pacmanLeftImage.src="./pacmanLeft.png";
     pacmanRightImage=new Image();
     pacmanRightImage.src="./pacmanRight.png";
+
+    smallCherryImage=new Image();
+    smallCherryImage.src="./smallCherry.png";
+    bigCherryImage=new Image();
+    bigCherryImage.src="./bigCherry.png";
 }
 
 function loadMap(){
     walls.clear();
     foods.clear();
     ghosts.clear();
+    cherries.clear();
 
     for(let r=0;r<rowCount;r++){
         for(let c=0;c<columnCount;c++){
@@ -141,7 +151,82 @@ function loadMap(){
             }
         }
     }
+
+    placeCherriesAndRemoveDots();
+
     nextPacmanDirection=null;
+}
+
+function tileCenterToDotBlock(col,row){
+    return {x:col*tileSize+14,y:row*tileSize+14};
+}
+
+function removeDotAtTile(col,row){
+    const dotPos=tileCenterToDotBlock(col,row);
+    let dotToRemove=null;
+
+    for(let food of foods.values()){
+        if(food.x===dotPos.x && food.y===dotPos.y){
+            dotToRemove=food;
+            break;
+        }
+    }
+
+    if(dotToRemove) foods.delete(dotToRemove);
+}
+
+function makeCherry(image,col,row,points){
+    const x=col*tileSize;
+    const y=row*tileSize;
+
+    const size=20;
+    const offset=(tileSize-size)/2;
+
+    const cherry=new Block(image,x+offset,y+offset,size,size);
+    cherry.points=points;
+
+    return cherry;
+}
+
+function isWallTile(col,row){
+    const x=col*tileSize;
+    const y=row*tileSize;
+
+    for(let w of walls.values()){
+        if(w.x===x && w.y===y) return true;
+    }
+
+    return false;
+}
+
+function placeCherriesAndRemoveDots(){
+    const smallPositions=[
+        {c:1,r:5},
+        {c:17,r:5},
+        {c:1,r:19},
+        {c:17,r:19},
+        {c:9,r:3},
+        {c:9,r:11},
+    ];
+
+    const bigPositions=[
+        {c:1,r:9},
+        {c:17,r:9},
+    ];
+
+    for(const p of smallPositions){
+        if(!isWallTile(p.c,p.r)){
+            cherries.add(makeCherry(smallCherryImage,p.c,p.r,50));
+            removeDotAtTile(p.c,p.r);
+        }
+    }
+
+    for(const p of bigPositions){
+        if(!isWallTile(p.c,p.r)){
+            cherries.add(makeCherry(bigCherryImage,p.c,p.r,100));
+            removeDotAtTile(p.c,p.r);
+        }
+    }
 }
 
 
@@ -165,6 +250,10 @@ function draw(){
 
     for(let wall of walls.values()){
         context.drawImage(wall.image,wall.x,wall.y,wall.width,wall.height);
+    }
+
+    for(let cherry of cherries.values()){
+        context.drawImage(cherry.image,cherry.x,cherry.y,cherry.width,cherry.height);
     }
 
     context.fillStyle="white";
@@ -274,6 +363,16 @@ function move(){
         }
     }
     foods.delete(foodEaten);
+
+    let cherryEaten=null;
+    for(let cherry of cherries.values()){
+        if(collision(pacman,cherry)){
+            cherryEaten=cherry;
+            score+=cherry.points;
+            break;
+        }
+    }
+    if(cherryEaten) cherries.delete(cherryEaten);
 
     if(foods.size==0){
         loadMap();
