@@ -53,6 +53,8 @@ let score=0;
 let lives=3;
 let gameOver=false;
 
+let nextPacmanDirection=null;
+
 window.onload=function(){
     board=document.getElementById("board");
     board.height=boardHeight;
@@ -71,7 +73,7 @@ window.onload=function(){
         ghost.updateDirection(newDirection);
     }
     update();
-    document.addEventListener("keyup",movePacman);
+    document.addEventListener("keydown",movePacman);
 }
 
 function loadImages(){
@@ -139,6 +141,7 @@ function loadMap(){
             }
         }
     }
+    nextPacmanDirection=null;
 }
 
 
@@ -181,9 +184,51 @@ function draw(){
     }
 }
 
+function wrapEntity(entity){
+    if(entity.x<-entity.width){
+        entity.x=boardWidth;
+    }
+    else if(entity.x>boardWidth){
+        entity.x=-entity.width;
+    }
+}
+
+function canMoveInDirection(block,direction){
+    const vx=(direction==='L' ? -tileSize/4 : direction==='R' ? tileSize/4 :0);
+    const vy=(direction==='U' ? -tileSize/4 : direction==='D' ? tileSize/4 :0);
+
+    const test ={
+        x:block.x+vx,
+        y:block.y+vy,
+        width:block.width,
+        height:block.height
+    };
+
+    for(let wall of walls.values()){
+        if(collision(test,wall)) return false;
+    }
+    return true;
+}
+
+function setPacmanImageByDirection(){
+    if(pacman.direction=='U') pacman.image=pacmanUpImage;
+    else if(pacman.direction=='D') pacman.image=pacmanDownImage;
+    else if(pacman.direction=='L') pacman.image=pacmanLeftImage;
+    else if(pacman.direction=='R') pacman.image=pacmanRightImage;
+}
+
 function move(){
+
+    if(nextPacmanDirection && canMoveInDirection(pacman,nextPacmanDirection)){
+        pacman.direction=nextPacmanDirection;
+        pacman.updateVelocity();
+        setPacmanImageByDirection();
+    }
+
     pacman.x+=pacman.velocityX;
     pacman.y+=pacman.velocityY;
+
+    wrapEntity(pacman);
 
     for(let wall of walls.values()){
         if(collision(pacman,wall)){
@@ -237,6 +282,11 @@ function move(){
 }
 
 function movePacman(e){
+
+    if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","keyW","KeyA","keyS","KeyD"].includes(e.code)){
+        e.preventDefault();
+    }
+
     if(gameOver){
         loadMap();
         resetPositions();
@@ -248,30 +298,30 @@ function movePacman(e){
     }
 
     if(e.code==="ArrowUp" || e.code==="KeyW"){
-        pacman.updateDirection('U');
+        nextPacmanDirection='U';
     }
     else if(e.code==="ArrowDown" || e.code==="KeyS"){
-        pacman.updateDirection('D');
+        nextPacmanDirection='D';
     }
     else if(e.code==='ArrowRight' || e.code==="KeyD"){
-        pacman.updateDirection('R');
+        nextPacmanDirection='R';
     }
     else if(e.code==='ArrowLeft' || e.code==="KeyA"){
-        pacman.updateDirection('L');
+        nextPacmanDirection='L';
     }
     
-    if(pacman.direction=='U'){
-        pacman.image=pacmanUpImage;
-    }
-    else if(pacman.direction=='D'){
-        pacman.image=pacmanDownImage;
-    }
-    else if(pacman.direction=='L'){
-        pacman.image=pacmanLeftImage;
-    }
-    else if(pacman.direction=='R'){
-        pacman.image=pacmanRightImage;
-    }
+    // if(pacman.direction=='U'){
+    //     pacman.image=pacmanUpImage;
+    // }
+    // else if(pacman.direction=='D'){
+    //     pacman.image=pacmanDownImage;
+    // }
+    // else if(pacman.direction=='L'){
+    //     pacman.image=pacmanLeftImage;
+    // }
+    // else if(pacman.direction=='R'){
+    //     pacman.image=pacmanRightImage;
+    // }
 }
 
 function collision(a,b){
@@ -285,6 +335,8 @@ function resetPositions(){
     pacman.reset();
     pacman.velocityX=0;
     pacman.velocityY=0;
+
+    nextPacmanDirection=null;
 
     for(let ghost of ghosts.values()){
         ghost.reset();
