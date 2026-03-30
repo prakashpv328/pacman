@@ -21,19 +21,21 @@ let wallImage;
 let smallCherryImage;
 let bigCherryImage;
 
-const tileMap = [
+let tileMap=[];
+
+const tileMap1=[
     "XXXXXXXXXXXXXXXXXXX",
     "X        X        X",
     "X XX XXX X XXX XX X",
-    "X                 X",
+    "X        s        X",
     "X XX X XXXXX X XX X",
-    "X    X       X    X",
+    "Xs   X       X   sX",
     "XXXX XXXX XXXX XXXX",
     "OOOX X       X XOOO",
     "XXXX X XXrXX X XXXX",
-    "O       bpo       O",
+    "O l     bpo     l O",
     "XXXX X XXXXX X XXXX",
-    "OOOX X       X XOOO",
+    "OOOX X   s   X XOOO",
     "XXXX X XXXXX X XXXX",
     "X        X        X",
     "X XX XXX X XXX XX X",
@@ -41,9 +43,84 @@ const tileMap = [
     "XX X X XXXXX X X XX",
     "X    X   X   X    X",
     "X XXXXXX X XXXXXX X",
-    "X                 X",
-    "XXXXXXXXXXXXXXXXXXX" 
+    "Xs               sX",
+    "XXXXXXXXXXXXXXXXXXX"
 ];
+
+const tileMap2=[
+    "XXXXXXXXXXXXXXXXXXX",
+  "X       s X      sX", 
+  "X XXXXXXX X XXXXX X",
+  "X X     X X X     X",
+  "X X XXX X X X XXX X",
+  "Xs  X   X   X  oX X",
+  "XXX X XXXXXXX X XXX",
+  "X   Xb  X X   X   X",
+  "X XXXXX X X XXXXX X",
+  "O   l   X   X   l O",
+  "X XXXXX X X XXXXX X",
+  "X   Xp  XsX   X   X",
+  "XXX X XXXXXXX X XXX",
+  "X   X   X   X  rX X",
+  "X X XXX X X X XXX X",
+  "X X     X X X     X",
+  "X XXXXXXX X XXXXX X",
+  "X         P       X",
+  "X XXXXXXX X XXXXX X",
+  "X s       X      sX",
+  "XXXXXXXXXXXXXXXXXXX"
+];
+
+const tileMap3 = [
+  "XXXXXXXXXXXXXXXXXXX",
+  "X s      X      s X",
+  "X XXXXX  X  XXXXX X",
+  "X X   X     X   X X",
+  "X X X XXXXXXX X X X",
+  "X   X   X X   X   X",
+  "X XXXXX X X XXXXX X",
+  "X        r        X",
+  "X XXX X XXX X XXX X",
+  "O l   X obp X   l O",
+  "X XXX X XXX X XXX X",
+  "X     X  s  X     X",
+  "X X XXX X X XXX X X",
+  "X   X   X X   X   X",
+  "X X X XXXXXXX X X X",
+  "X X   X     X   X X",
+  "X XXXXX  X  XXXXX X",
+  "X   s    P    s   X",
+  "X XXXXX  X  XXXXX X",
+  "X s             s X",
+  "XXXXXXXXXXXXXXXXXXX"
+];
+
+const tileMap4=[
+  "XXXXXXXXXXXXXXXXXXX",
+  "X   s   XXX    s  X",
+  "X XXXXX X X  XXXX X",
+  "X X   X        X  X",
+  "X X X XXXXXXXX X  X",
+  "X   X   X  X   X  X",
+  "XXX XXX XX XX XXX X",
+  "X     X        X  X",
+  "X XXX X XXXXXXXX XX",
+  "O l   X r b p o l O",
+  "X XXX X XXXXXXXX XX",
+  "X         s       X",
+  "XXX XXX XX XX XXX X",
+  "X   X   X  X   X  X",
+  "X X X XXXXXXXX X XX",
+  "X   X        X    X",
+  "X XXXXX X X XXXXX X",
+  "X   s    P      s X",
+  "X XXXXX X X XXXXX X",
+  "X s     XXX     s X",
+  "XXXXXXXXXXXXXXXXXXX"
+]
+
+const tileMaps=[tileMap1,tileMap2,tileMap3,tileMap4];
+let lastMapIndex=-1;
 
 const walls=new Set();
 const foods=new Set();
@@ -66,6 +143,7 @@ window.onload=function(){
     context=board.getContext("2d");
 
     loadImages();
+    selectRandomMap();
     loadMap();
 
     // console.log(walls.size);
@@ -78,6 +156,21 @@ window.onload=function(){
     }
     update();
     document.addEventListener("keydown",movePacman);
+}
+
+function selectRandomMap(){
+    if(tileMaps.length==0) return;
+
+    let idx=Math.floor(Math.random()*tileMaps.length);
+
+    if(tileMaps.length>1){
+        while(idx===lastMapIndex){
+            idx=Math.floor(Math.random()*tileMaps.length);
+        }
+    }
+
+    lastMapIndex=idx;
+    tileMap=tileMaps[idx];
 }
 
 function loadImages(){
@@ -145,6 +238,12 @@ function loadMap(){
             else if(tileMapChar==='P'){
                 pacman=new Block(pacmanRightImage,x,y,tileSize,tileSize);
             }
+            else if(tileMapChar==='s'){
+                cherries.add(makeCherry(smallCherryImage,c,r,50));
+            }
+            else if(tileMapChar==='l'){
+                cherries.add(makeCherry(bigCherryImage,c,r,100));
+            }
             else if(tileMapChar===' '){
                 const food=new Block(null,x+14,y+14,4,4);
                 foods.add(food);
@@ -152,27 +251,9 @@ function loadMap(){
         }
     }
 
-    placeCherriesAndRemoveDots();
+    // placeCherriesAndRemoveDots();
 
     nextPacmanDirection=null;
-}
-
-function tileCenterToDotBlock(col,row){
-    return {x:col*tileSize+14,y:row*tileSize+14};
-}
-
-function removeDotAtTile(col,row){
-    const dotPos=tileCenterToDotBlock(col,row);
-    let dotToRemove=null;
-
-    for(let food of foods.values()){
-        if(food.x===dotPos.x && food.y===dotPos.y){
-            dotToRemove=food;
-            break;
-        }
-    }
-
-    if(dotToRemove) foods.delete(dotToRemove);
 }
 
 function makeCherry(image,col,row,points){
@@ -188,46 +269,64 @@ function makeCherry(image,col,row,points){
     return cherry;
 }
 
-function isWallTile(col,row){
-    const x=col*tileSize;
-    const y=row*tileSize;
+// function tileCenterToDotBlock(col,row){
+//     return {x:col*tileSize+14,y:row*tileSize+14};
+// }
 
-    for(let w of walls.values()){
-        if(w.x===x && w.y===y) return true;
-    }
+// function removeDotAtTile(col,row){
+//     const dotPos=tileCenterToDotBlock(col,row);
+//     let dotToRemove=null;
 
-    return false;
-}
+//     for(let food of foods.values()){
+//         if(food.x===dotPos.x && food.y===dotPos.y){
+//             dotToRemove=food;
+//             break;
+//         }
+//     }
 
-function placeCherriesAndRemoveDots(){
-    const smallPositions=[
-        {c:1,r:5},
-        {c:17,r:5},
-        {c:1,r:19},
-        {c:17,r:19},
-        {c:9,r:3},
-        {c:9,r:11},
-    ];
+//     if(dotToRemove) foods.delete(dotToRemove);
+// }
 
-    const bigPositions=[
-        {c:1,r:9},
-        {c:17,r:9},
-    ];
+// function isWallTile(col,row){
+//     const x=col*tileSize;
+//     const y=row*tileSize;
 
-    for(const p of smallPositions){
-        if(!isWallTile(p.c,p.r)){
-            cherries.add(makeCherry(smallCherryImage,p.c,p.r,50));
-            removeDotAtTile(p.c,p.r);
-        }
-    }
+//     for(let w of walls.values()){
+//         if(w.x===x && w.y===y) return true;
+//     }
 
-    for(const p of bigPositions){
-        if(!isWallTile(p.c,p.r)){
-            cherries.add(makeCherry(bigCherryImage,p.c,p.r,100));
-            removeDotAtTile(p.c,p.r);
-        }
-    }
-}
+//     return false;
+// }
+
+// function placeCherriesAndRemoveDots(){
+//     const smallPositions=[
+//         {c:1,r:5},
+//         {c:17,r:5},
+//         {c:1,r:19},
+//         {c:17,r:19},
+//         {c:9,r:3},
+//         {c:9,r:11},
+//     ];
+
+//     const bigPositions=[
+//         {c:1,r:9},
+//         {c:17,r:9},
+//     ];
+
+//     for(const p of smallPositions){
+//         if(!isWallTile(p.c,p.r)){
+//             cherries.add(makeCherry(smallCherryImage,p.c,p.r,50));
+//             removeDotAtTile(p.c,p.r);
+//         }
+//     }
+
+//     for(const p of bigPositions){
+//         if(!isWallTile(p.c,p.r)){
+//             cherries.add(makeCherry(bigCherryImage,p.c,p.r,100));
+//             removeDotAtTile(p.c,p.r);
+//         }
+//     }
+// }
 
 
 function update(){
@@ -374,7 +473,8 @@ function move(){
     }
     if(cherryEaten) cherries.delete(cherryEaten);
 
-    if(foods.size==0){
+    if(foods.size==0 && cherries.size==0){
+        selectRandomMap();
         loadMap();
         resetPositions();
     }
@@ -387,6 +487,7 @@ function movePacman(e){
     }
 
     if(gameOver){
+        selectRandomMap();
         loadMap();
         resetPositions();
         lives=3;
