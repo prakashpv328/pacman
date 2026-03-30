@@ -21,6 +21,9 @@ let wallImage;
 let smallCherryImage;
 let bigCherryImage;
 
+let heartImage;
+let shieldImage;
+
 let tileMap=[];
 
 const tileMap1=[
@@ -48,7 +51,7 @@ const tileMap1=[
 ];
 
 const tileMap2=[
-    "XXXXXXXXXXXXXXXXXXX",
+  "XXXXXXXXXXXXXXXXXXX",
   "X       s X      sX", 
   "X XXXXXXX X XXXXX X",
   "X X     X X X     X",
@@ -127,6 +130,9 @@ const foods=new Set();
 const ghosts=new Set();
 const cherries=new Set();
 
+const hearts=new Set();
+const shields=new Set();
+
 let pacman;
 
 const directions=['U','D','L','R'];
@@ -136,6 +142,21 @@ let gameOver=false;
 
 let nextPacmanDirection=null;
 
+const SHIELD_THRESHOLD=250;
+const SHIELD_POWER_DURATION=5000;
+const SHIELD_SPAWN_LIFETIME=10000;
+
+let shieldActive=false;
+let shieldTimer=0;
+let shieldSpawnedAt=0;
+let shieldStartScore=0
+
+
+const HEART_SPAWN_LIFETIME=10000;
+let heartSpawnedAt=0;
+
+
+
 window.onload=function(){
     board=document.getElementById("board");
     board.height=boardHeight;
@@ -143,6 +164,13 @@ window.onload=function(){
     context=board.getContext("2d");
 
     loadImages();
+
+    const restartBtn=this.document.getElementById("restartBtn");
+    if(restartBtn){
+        restartBtn.addEventListener("click",restartGame)
+    }
+
+
     selectRandomMap();
     loadMap();
 
@@ -156,6 +184,43 @@ window.onload=function(){
     }
     update();
     document.addEventListener("keydown",movePacman);
+}
+
+function restartGame(){
+    hideGameOverPopup();
+
+    lives=3;
+    score=0;
+    gameOver=false;
+
+
+    shieldActive=false;
+    shieldTimer=0;
+    shieldSpawnedAt=0;
+    shieldStartScore=0;
+    shields.clear();
+
+
+    heartSpawnedAt=0;
+    hearts.clear();
+
+    selectRandomMap();
+    loadMap();
+    resetPositions();
+
+    update();
+}
+
+function showGameOverPopup(){
+    const overlay=document.getElementById("gameOverOverlay");
+    const scoreEl=document.getElementById("finalScoreText");
+    if(scoreEl) scoreEl.textContent="Your Score: " + score;
+    if(overlay) overlay.classList.remove("hidden");
+}
+
+function hideGameOverPopup(){
+    const overlay=document.getElementById("gameOverOverlay");
+    if(overlay) overlay.classList.add("hidden");
 }
 
 function selectRandomMap(){
@@ -187,18 +252,24 @@ function loadImages(){
     redGhostImage.src="./redGhost.png";
 
     pacmanUpImage=new Image();
-    pacmanUpImage.src="./pacmanUp.png";
+    pacmanUpImage.src="./pacmanUp2.png";
     pacmanDownImage=new Image();
-    pacmanDownImage.src="./pacmanDown.png";
+    pacmanDownImage.src="./pacmanDown2.png";
     pacmanLeftImage=new Image();
-    pacmanLeftImage.src="./pacmanLeft.png";
+    pacmanLeftImage.src="./pacmanLeft2.png";
     pacmanRightImage=new Image();
-    pacmanRightImage.src="./pacmanRight.png";
+    pacmanRightImage.src="./pacmanRight2.png";
 
     smallCherryImage=new Image();
     smallCherryImage.src="./smallCherry.png";
     bigCherryImage=new Image();
     bigCherryImage.src="./bigCherry.png";
+
+    shieldImage=new Image();
+    shieldImage.src="./shield.png";
+
+    heartImage=new Image();
+    heartImage.src="./life.png";
 }
 
 function loadMap(){
@@ -206,6 +277,8 @@ function loadMap(){
     foods.clear();
     ghosts.clear();
     cherries.clear();
+    hearts.clear();
+    shields.clear();
 
     for(let r=0;r<rowCount;r++){
         for(let c=0;c<columnCount;c++){
@@ -254,6 +327,15 @@ function loadMap(){
     // placeCherriesAndRemoveDots();
 
     nextPacmanDirection=null;
+
+    heartSpawnedAt=0;
+    shieldSpawnedAt=0;
+
+
+    shieldActive=false;
+    shieldTimer=0;
+
+    shieldStartScore=score;
 }
 
 function makeCherry(image,col,row,points){
@@ -329,6 +411,50 @@ function makeCherry(image,col,row,points){
 // }
 
 
+function makePickup(image,col,row){
+    const x=col*tileSize;
+    const y=row*tileSize;
+    const size=22;
+    const offset=(tileSize-size)/2;
+
+    return new Block(image,x+offset,y+offset,size,size);
+}
+
+function isTileBlocked(col,row){
+    const x=col*tileSize;
+    const y=row*tileSize;
+
+    for(let w of walls.values()){
+        if(w.x===x && w.y===y) return true;
+    }
+
+    if( pacman && pacman.x===x && pacman.y===y) return true;
+
+    for(let g of ghosts.values()){
+        if(g.x===x && g.y===y) return true;
+    }
+    return false;
+}
+
+
+function randomEmptyTile(){
+    let tries=0;
+
+
+    while(tries<5000){
+        tries++;
+        const col=Math.floor(Math.random()*columnCount);
+        const row=Math.floor(Math.random()*rowCount);
+
+        const ch=tileMap[row][col];
+        if(ch!==' ' && ch!=='O') continue;
+        if(isTileBlocked(col,row)) continue;
+
+        return{col,row};
+    }
+    return null;
+}
+
 function update(){
     if(gameOver){
         return;
@@ -355,6 +481,14 @@ function draw(){
         context.drawImage(cherry.image,cherry.x,cherry.y,cherry.width,cherry.height);
     }
 
+    for(let heart of hearts.values()){
+        context.drawImage(heart.image,heart.x,heart.y,heart.width,heart.height);
+    }
+
+    for(let shield of shields.values()){
+        context.drawImage(shield.image,shield.x,shield.y,shield.width,shield.height);
+    }
+
     context.fillStyle="white";
 
     for(let food of foods.values()){
@@ -364,12 +498,18 @@ function draw(){
     context.fillStyle="white";
     context.font="14px sans-serif";
 
-    if(gameOver){
-        context.fillText("Game Over: "+String(score),tileSize/2,tileSize/2);
+    let shieldText="";
+    if(shieldActive){
+        const msLeft=Math.max(0,shieldTimer-Date.now());
+        shieldText="Shield: "+(msLeft/1000).toFixed(1)+"s";
     }
-    else{
-        context.fillText("x"+String(lives)+ " "+String(score),tileSize/2,tileSize/2)
-    }
+
+    // if(gameOver){
+    //     context.fillText("Game Over: "+String(score),tileSize/2,tileSize/2);
+    // }
+    // else{
+    // }
+    context.fillText("x"+String(lives)+ " "+String(score)+ " "+shieldText,tileSize/2,tileSize/2)
 }
 
 function wrapEntity(entity){
@@ -405,7 +545,78 @@ function setPacmanImageByDirection(){
     else if(pacman.direction=='R') pacman.image=pacmanRightImage;
 }
 
+function heartSpawn(){
+
+    if(hearts.size>0 && heartSpawnedAt>0 && (Date.now()-
+heartSpawnedAt)>=HEART_SPAWN_LIFETIME){
+    hearts.clear();
+    heartSpawnedAt=0;
+}
+
+
+    if(lives>=3) return;
+
+    if(hearts.size>0) return;
+
+    if(Math.random()>0.02) return;
+
+    const pos=randomEmptyTile();
+    if(!pos) return;
+
+    hearts.add(makePickup(heartImage,pos.col,pos.row));
+    heartSpawnedAt=Date.now();
+}
+
+function shieldSpawn(){
+
+    if(shieldActive && Date.now()>=shieldTimer){
+        shieldActive=false;
+        shieldTimer=0;
+        shieldStartScore=score;
+    }
+
+    if(shields.size>0 && shieldSpawnedAt>0 && Date.now()-shieldSpawnedAt>=SHIELD_SPAWN_LIFETIME){
+        shields.clear();
+        shieldSpawnedAt=0;
+        shieldStartScore=score;
+    }
+
+
+    if(shields.size>0) return;
+
+    if(shieldActive) return;
+
+    if(score-shieldStartScore < SHIELD_THRESHOLD) return;
+
+    const pos=randomEmptyTile();
+    if(!pos) return;
+
+    shields.add(makePickup(shieldImage,pos.col,pos.row));
+    shieldSpawnedAt=Date.now();
+}
+
+// function updateShieldState(){
+//     if(!shieldActive) return;
+
+//     if(Date.now()>=shieldTimer){
+//         shieldActive=false;
+//         shieldTimer=0;
+//     }
+// }
+
+function activateShield(){
+    shieldActive=true;
+    shieldTimer=Date.now()+SHIELD_POWER_DURATION;
+
+    shieldSpawnedAt=0;
+
+}
+
 function move(){
+
+    // updateShieldState();
+    heartSpawn();
+    shieldSpawn();
 
     if(nextPacmanDirection && canMoveInDirection(pacman,nextPacmanDirection)){
         pacman.direction=nextPacmanDirection;
@@ -428,12 +639,16 @@ function move(){
 
     for(let ghost of ghosts.values()){
         if(collision(ghost,pacman)){
-            lives-=1;
-            if(lives==0){
-                gameOver=true;
+            if(!shieldActive){
+                lives-=1;
+                if(lives==0){
+                    gameOver=true;
+                    showGameOverPopup();
+                    return;
+                }
+                resetPositions();
                 return;
             }
-            resetPositions();
         }
 
         if(ghost.y==tileSize*9 && ghost.direction !='U' && ghost.direction!='D'){
@@ -473,6 +688,33 @@ function move(){
     }
     if(cherryEaten) cherries.delete(cherryEaten);
 
+
+    let heartEaten=null;
+    for(let heart of hearts.values()){
+        if(collision(pacman,heart)){
+            heartEaten=heart;
+            lives=Math.min(3,lives+1);
+            break;
+        }
+    }
+    if(heartEaten){
+        hearts.delete(heartEaten);
+        heartSpawnedAt=0;
+    } 
+        
+
+    let shieldEaten=null;
+    for(let shield of shields.values()){
+        if(collision(pacman,shield)){
+            shieldEaten=shield;
+            break;
+        }
+    }
+    if(shieldEaten){
+        shields.delete(shieldEaten);
+        activateShield();
+    } 
+
     if(foods.size==0 && cherries.size==0){
         selectRandomMap();
         loadMap();
@@ -482,18 +724,18 @@ function move(){
 
 function movePacman(e){
 
-    if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","keyW","KeyA","keyS","KeyD"].includes(e.code)){
+    if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyW","KeyA","KeyS","KeyD"].includes(e.code)){
         e.preventDefault();
     }
 
     if(gameOver){
-        selectRandomMap();
-        loadMap();
-        resetPositions();
-        lives=3;
-        score=0;
-        gameOver=false;
-        update();
+        // selectRandomMap();
+        // loadMap();
+        // resetPositions();
+        // lives=3;
+        // score=0;
+        // gameOver=false;
+        // update();
         return;
     }
 
@@ -560,6 +802,8 @@ class Block{
         this.direction='R';
         this.velocityX=0;
         this.velocityY=0;
+
+        this.points=0;
     }
 
     updateDirection(direction){
