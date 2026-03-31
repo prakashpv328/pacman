@@ -6,37 +6,91 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Pac-Man</title>
         <link rel="stylesheet" href="pacman.css">
-        <script src="pacman.js"></script>
+        <script src="pacman.js" defer></script>
     </head>
     <body>
-        <canvas id="board"></canvas>
+        <div id="gameContainer">
+            <div id="lobbyOverlay" class="screen">
+                <div class="lobby">
+                    <div class="lobby-top">
+                        <div class="logo-line">
+                            <span class="dot dot-red"></span>
+                            <span class="dot dot-pink"></span>
+                            <span class="dot dot-blue"></span>
+                            <span class="dot dot-orange"></span>
+                        </div>
 
-        <div id="gameOverOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+                        <h1 class="lobby-title">PAC-MAN</h1>
+                        <div class="lobby-subtitle">Classic Arcade Game</div>
+                    </div>
 
-            <div class="card">
+                    <div class="lobby-middle">
+                        <div class="sprite-row">
+                            <img class="sprite pac" src="./pacmanRight.png" alt="Pac-Man"/>
+                            <div class="chase-dots">
+                                <span></span><span></span><span></span><span></span><span></span>
+                            </div>
+                            <img class="sprite" src="./redGhost.png" alt="Red Ghost"/>
+                            <img class="sprite" src="./pinkGhost.png" alt="Pink Ghost"/>
+                            <img class="sprite" src="./blueGhost.png" alt="Blue Ghost"/>
+                            <img class="sprite" src="./orangeGhost.png" alt="Orange Ghost"/>
+                        </div>
 
-                <div class="card-header">
-                    <h2 id="gameOverTitle" class="title">GAME OVER</h2>
-                    <p class="subtitle">Pac-Man got caught</p>
+                        <div class="rules">
+                            <div class="rule"><b>Dots</b><span>+10</span></div>
+                            <div class="rule"><b>Small Cherry</b><span>+50</span></div>
+                            <div class="rule"><b>Big Cherry</b><span>+100</span></div>
+                            <div class="rule"><b>Shield</b><span>Every 250 pts (5s)</span></div>
+                            <div class="rule"><b>Heart</b><span>Lives &lt; 3 (10s)</span></div>
+                        </div>
+                    </div>
+
+                    <div class="lobby-bottom">
+                        <button id="startBtn" class="menu-btn" type="button">START</button>
+                        <div class="keys">
+                            <span>Move:</span>
+                            <kbd>↑</kbd>
+                            <kbd>↓</kbd>
+                            <kbd>←</kbd>
+                            <kbd>→</kbd>
+                            <span>Or</span>
+                            <kbd>W</kbd>
+                            <kbd>S</kbd>
+                            <kbd>A</kbd>
+                            <kbd>D</kbd>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            
+            <canvas id="board"></canvas>
 
-                <div class="score-box">
-                    <div class="score-label">Your score</div>
-                    <div id="finalScoreText" class="score-value">0</div>
+            <div id="gameOverOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+
+                <div class="card">
+
+                    <div class="card-header">
+                        <h2 id="gameOverTitle" class="title">GAME OVER</h2>
+                        <p class="subtitle">Pac-Man got caught</p>
+                    </div>
+
+                    <div class="score-box">
+                        <div class="score-label">Your score</div>
+                        <div id="finalScoreText" class="score-value">0</div>
+                    </div>
+
+                    <div class="actions">
+                        <button id="restartBtn" class="btn btn-primary" type="button">Restart</button>
+                        <button id="lobbyBtn" class="btn btn-ghost" type="button">Lobby</button>
+                    </div>
+
+                    <div class="hint">
+                        Tip:Collect <b>250</b> points to spawn a shield,Shield lasts <b>5</b> seconds.
+                    </div>
+
                 </div>
-
-                <div class="actions">
-                    <button id="restartBtn" class="btn btn-primary" type="button">Restart</button>
-                    <button id="closeBtn" class="btn btn-ghost" type="button">Close</button>
-                </div>
-
-                <div class="hint">
-                    Tip:Collect <b>250</b> points to spawn a shield,Shield lasts <b>5</b> seconds.
-                </div>
-
             </div>
         </div>
-
     </body>
 </html>
 

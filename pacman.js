@@ -51,75 +51,75 @@ const tileMap1=[
 ];
 
 const tileMap2=[
-  "XXXXXXXXXXXXXXXXXXX",
-  "X       s X      sX", 
-  "X XXXXXXX X XXXXX X",
-  "X X     X X X     X",
-  "X X XXX X X X XXX X",
-  "Xs  X   X   X  oX X",
-  "XXX X XXXXXXX X XXX",
-  "X   Xb  X X   X   X",
-  "X XXXXX X X XXXXX X",
-  "O   l   X   X   l O",
-  "X XXXXX X X XXXXX X",
-  "X   Xp  XsX   X   X",
-  "XXX X XXXXXXX X XXX",
-  "X   X   X   X  rX X",
-  "X X XXX X X X XXX X",
-  "X X     X X X     X",
-  "X XXXXXXX X XXXXX X",
-  "X         P       X",
-  "X XXXXXXX X XXXXX X",
-  "X s       X      sX",
-  "XXXXXXXXXXXXXXXXXXX"
+    "XXXXXXXXXXXXXXXXXXX",
+    "X       s X      sX", 
+    "X XXXXXXX X XXXXX X",
+    "X X     X X X     X",
+    "X X XXX X X X XXX X",
+    "Xs  X   X   X  oX X",
+    "XXX X XXXXXXX X XXX",
+    "X   Xb  X X   X   X",
+    "X XXXXX X X XXXXX X",
+    "O   l   X   X   l O",
+    "X XXXXX X X XXXXX X",
+    "X   Xp  XsX   X   X",
+    "XXX X XXXXXXX X XXX",
+    "X   X   X   X  rX X",
+    "X X XXX X X X XXX X",
+    "X X     X X X     X",
+    "X XXXXXXX X XXXXX X",
+    "X         P       X",
+    "X XXXXXXX X XXXXX X",
+    "X s       X      sX",
+    "XXXXXXXXXXXXXXXXXXX"
 ];
 
 const tileMap3 = [
-  "XXXXXXXXXXXXXXXXXXX",
-  "X s      X      s X",
-  "X XXXXX  X  XXXXX X",
-  "X X   X     X   X X",
-  "X X X XXXXXXX X X X",
-  "X   X   X X   X   X",
-  "X XXXXX X X XXXXX X",
-  "X        r        X",
-  "X XXX X XXX X XXX X",
-  "O l   X obp X   l O",
-  "X XXX X XXX X XXX X",
-  "X     X  s  X     X",
-  "X X XXX X X XXX X X",
-  "X   X   X X   X   X",
-  "X X X XXXXXXX X X X",
-  "X X   X     X   X X",
-  "X XXXXX  X  XXXXX X",
-  "X   s    P    s   X",
-  "X XXXXX  X  XXXXX X",
-  "X s             s X",
-  "XXXXXXXXXXXXXXXXXXX"
+    "XXXXXXXXXXXXXXXXXXX",
+    "X s      X      s X",
+    "X XXXXX  X  XXXXX X",
+    "X X   X     X   X X",
+    "X X X XXXXXXX X X X",
+    "X   X   X X   X   X",
+    "X XXXXX X X XXXXX X",
+    "X        r        X",
+    "X XXX X XXX X XXX X",
+    "O l   X obp X   l O",
+    "X XXX X XXX X XXX X",
+    "X     X  s  X     X",
+    "X X XXX X X XXX X X",
+    "X   X   X X   X   X",
+    "X X X XXXXXXX X X X",
+    "X X   X     X   X X",
+    "X XXXXX  X  XXXXX X",
+    "X   s    P    s   X",
+    "X XXXXX  X  XXXXX X",
+    "X s             s X",
+    "XXXXXXXXXXXXXXXXXXX"
 ];
 
 const tileMap4=[
-  "XXXXXXXXXXXXXXXXXXX",
-  "X   s   XXX    s  X",
-  "X XXXXX X X  XXXX X",
-  "X X   X        X  X",
-  "X X X XXXXXXXX X  X",
-  "X   X   X  X   X  X",
-  "XXX XXX XX XX XXX X",
-  "X     X        X  X",
-  "X XXX X XXXXXXXX XX",
-  "O l   X r b p o l O",
-  "X XXX X XXXXXXXX XX",
-  "X         s       X",
-  "XXX XXX XX XX XXX X",
-  "X   X   X  X   X  X",
-  "X X X XXXXXXXX X XX",
-  "X   X        X    X",
-  "X XXXXX X X XXXXX X",
-  "X   s    P      s X",
-  "X XXXXX X X XXXXX X",
-  "X s     XXX     s X",
-  "XXXXXXXXXXXXXXXXXXX"
+    "XXXXXXXXXXXXXXXXXXX",
+    "X   s   XXX    s  X",
+    "X XXXXX X X  XXXX X",
+    "X X   X        X  X",
+    "X X X XXXXXXXX X  X",
+    "X   X   X  X   X  X",
+    "XXX XXX XX XX XXX X",
+    "X     X        X  X",
+    "X XXX X XXXXXXXX XX",
+    "O l   X r b p o l O",
+    "X XXX X XXXXXXXX XX",
+    "X         s       X",
+    "XXX XXX XX XX XXX X",
+    "X   X   X  X   X  X",
+    "X X X XXXXXXXX X XX",
+    "X   X        X    X",
+    "X XXXXX X X XXXXX X",
+    "X   s    P      s X",
+    "X XXXXX X X XXXXX X",
+    "X s     XXX     s X",
+    "XXXXXXXXXXXXXXXXXXX"
 ]
 
 const tileMaps=[tileMap1,tileMap2,tileMap3,tileMap4];
@@ -138,6 +138,7 @@ let pacman;
 const directions=['U','D','L','R'];
 let score=0;
 let lives=3;
+let gameStarted=false;
 let gameOver=false;
 
 let nextPacmanDirection=null;
@@ -159,45 +160,136 @@ let heartSpawnedAt=0;
 
 window.onload=function(){
     board=document.getElementById("board");
+
+    if(!board){
+        console.error("Board not found. Make sure Html has a canvas element with board id");
+        return;
+    }
+
     board.height=boardHeight;
     board.width=boardWidth;
     context=board.getContext("2d");
 
     loadImages();
 
+    const startBtn=this.document.getElementById("startBtn");
+    if(startBtn) startBtn.addEventListener("click",startGame);
+
     const restartBtn=this.document.getElementById("restartBtn");
     if(restartBtn){
         restartBtn.addEventListener("click",restartGame)
     }
 
+    const lobbyBtn=this.document.getElementById("lobbyBtn");
+    if(lobbyBtn) lobbyBtn.addEventListener("click",goToLobby);
 
-    selectRandomMap();
-    loadMap();
+    showLobby();
+
+    this.document.addEventListener("keydown",movePacman);
+
+
+    // selectRandomMap();
+    // loadMap();
 
     // console.log(walls.size);
     // console.log(foods.size);
     // console.log(ghosts.size);
 
-    for(let ghost of ghosts.values()){
-        const newDirection=directions[Math.floor(Math.random()*4)];
-        ghost.updateDirection(newDirection);
-    }
-    update();
-    document.addEventListener("keydown",movePacman);
+    // for(let ghost of ghosts.values()){
+    //     const newDirection=directions[Math.floor(Math.random()*4)];
+    //     ghost.updateDirection(newDirection);
+    // }
+    // update();
+    // document.addEventListener("keydown",movePacman);
 
-    const closeBtn=this.document.getElementById("closeBtn");
-    if(closeBtn){
-        closeBtn.addEventListener("click",()=>{
-            hideGameOverPopup();
-        })
-    }
+    // const closeBtn=this.document.getElementById("closeBtn");
+    // if(closeBtn){
+    //     closeBtn.addEventListener("click",()=>{
+    //         hideGameOverPopup();
+    //     })
+    // }
 }
+
+function showLobby(){
+    const lobby=document.getElementById("lobbyOverlay");
+    if(lobby) lobby.classList.remove("hidden");
+}
+
+function hideLobby(){
+    const lobby=document.getElementById("lobbyOverlay");
+    if(lobby) lobby.classList.add("hidden");
+}
+
+function showGameOverPopup(){
+    const overlay=document.getElementById("gameOverOverlay");
+    const scoreEl=document.getElementById("finalScoreText");
+    if(scoreEl) scoreEl.textContent="Your Score: " + score;
+    if(overlay) overlay.classList.remove("hidden");
+}
+
+function hideGameOverPopup(){
+    const overlay=document.getElementById("gameOverOverlay");
+    if(overlay) overlay.classList.add("hidden");
+}
+
+function goToLobby(){
+    hideGameOverPopup();
+
+    gameStarted=false;
+    gameOver=false;
+
+    walls.clear();
+    foods.clear();
+    ghosts.clear();
+    cherries.clear();
+    hearts.clear();
+    shields.clear();
+
+    shieldActive=false;
+    shieldTimer=0;
+    shieldSpawnedAt=0;
+    shieldStartScore=0;
+
+    heartSpawnedAt=0;
+
+    showLobby();
+}
+
+function startGame(){
+    hideLobby();
+
+    gameStarted=true;
+    gameOver=false;
+
+    lives=3;
+    score=0;
+
+    hearts.clear();
+    shields.clear();
+    heartSpawnedAt=0;
+    shieldSpawnedAt=0
+
+    shieldActive=false;
+    shieldTimer=0;
+    shieldStartScore=0;
+
+    selectRandomMap();
+    loadMap();
+
+    for(let ghost of ghosts.values()){
+        ghost.updateDirection(directions[Math.floor(Math.random()*4)]);
+    }
+
+    update();
+}
+
 
 function restartGame(){
     hideGameOverPopup();
 
     lives=3;
     score=0;
+    gameStarted=true;
     gameOver=false;
 
 
@@ -216,19 +308,6 @@ function restartGame(){
     resetPositions();
 
     update();
-}
-
-function showGameOverPopup(){
-    const overlay=document.getElementById("gameOverOverlay");
-    const scoreEl=document.getElementById("finalScoreText");
-    if(scoreEl) scoreEl.textContent="Your Score: " + score;
-    if(overlay) overlay.classList.remove("hidden");
-    document.getElementById("finalScoreText").textContent=score;
-}
-
-function hideGameOverPopup(){
-    const overlay=document.getElementById("gameOverOverlay");
-    if(overlay) overlay.classList.add("hidden");
 }
 
 function selectRandomMap(){
@@ -464,6 +543,7 @@ function randomEmptyTile(){
 }
 
 function update(){
+    if(!gameStarted) return;
     if(gameOver){
         return;
     }
@@ -684,7 +764,7 @@ function move(){
             break;
         }
     }
-    foods.delete(foodEaten);
+    if(foodEaten) foods.delete(foodEaten);
 
     let cherryEaten=null;
     for(let cherry of cherries.values()){
@@ -735,6 +815,8 @@ function movePacman(e){
     if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyW","KeyA","KeyS","KeyD"].includes(e.code)){
         e.preventDefault();
     }
+
+    if(!gameStarted) return;
 
     if(gameOver){
         // selectRandomMap();
