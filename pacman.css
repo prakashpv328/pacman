@@ -3,11 +3,14 @@ body{
     overflow:hidden;
     /* margin: 0; */
     /* background: #000; */
+    font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 
 }
 
 #board{
-    background-color:rgb(0, 0, 0);
+    background-color:black;
+    display:block;
+    margin:0 auto;
 }
 
 .overlay{
@@ -16,30 +19,102 @@ body{
     display:flex;
     align-items:center;
     justify-content:center;
-    background:rgba(255, 255, 255, 0.65);
+    background:rgba(0, 0, 0, 0.72);
     z-index:9999;
 }
 
-.overlay.hidden{
+.hidden{
     display:none;
 }
 
-.popup{
-    width:min(320px ,90vw);
-    background:#111;
+.card{
+    width:min(420px ,92vw);
+    background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);
     color:#fff;
     border:2px solid #444;
-    border-radius:12px;
-    padding:18px 20px;
-    font-family:system-ui,Arial,sans-serif;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    border-radius:16px;
+    padding:18px 18px 16px;
     text-align:center;
 }
 
-.popup button{
-    margin-top:12px;
-    padding:10px 16px;
-    border:none;
-    border-radius:10px;
+.card-header{
+    margin-bottom:14px;
+}
+
+.title{
+    margin:0;
+    font-size:28px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+}
+
+.subtitle{
+    margin:6px 0 0;
+    opacity:0.8;
+    font-size:14px;
+}
+
+.score-box{
+    border-radius:14px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);
+    padding:14px 12px;
+    margin:10px 0 14px;
+}
+
+.score-label{
+    font-size:12px;
+    letter-spacing:1.2px;
+    opacity:0.8;
+
+}
+
+.score-value{
+    font-size:44px;
+    font-weight:800;
+    margin-top:4px;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:8px;
+}
+
+.btn{
+    padding:12px 16px;
+    border-radius:12px;
+    border:0;
+    font-weight:700;
     cursor:pointer;
-    font-weight:600;
+    min-width:140px;
+}
+
+.btn-primary{
+    background:#ffd54a;
+    color:#111;
+}
+
+.btn-primary:hover{
+    filter:brightness(0.95);
+}
+
+.btn-ghost{
+    background:transparent;
+    color:#fff;
+    border:1px solid rgba(255,255,255,0.25);
+}
+
+.btn-ghost:hover{
+    background:rgba(255,255,255,0.08)
+}
+
+.hint{
+    margin-top:12px;
+    font-size:12px;
+    opacity:0.75;
+    line-height:1.4;
 }

@@ -11,14 +11,32 @@
     <body>
         <canvas id="board"></canvas>
 
-        <div id="gameOverOverlay" class="overlay hidden">
-            <div class="popup">
-                <h2>Game Over</h2>
-                <p id="finalScoreText">Your Score: 0</p>
-                <button id="restartBtn" type="button">Restart Game</button>
+        <div id="gameOverOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+
+            <div class="card">
+
+                <div class="card-header">
+                    <h2 id="gameOverTitle" class="title">GAME OVER</h2>
+                    <p class="subtitle">Pac-Man got caught</p>
+                </div>
+
+                <div class="score-box">
+                    <div class="score-label">Your score</div>
+                    <div id="finalScoreText" class="score-value">0</div>
+                </div>
+
+                <div class="actions">
+                    <button id="restartBtn" class="btn btn-primary" type="button">Restart</button>
+                    <button id="closeBtn" class="btn btn-ghost" type="button">Close</button>
+                </div>
+
+                <div class="hint">
+                    Tip:Collect <b>250</b> points to spawn a shield,Shield lasts <b>5</b> seconds.
+                </div>
+
             </div>
         </div>
-        
+
     </body>
 </html>
 

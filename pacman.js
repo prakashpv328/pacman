@@ -184,6 +184,13 @@ window.onload=function(){
     }
     update();
     document.addEventListener("keydown",movePacman);
+
+    const closeBtn=this.document.getElementById("closeBtn");
+    if(closeBtn){
+        closeBtn.addEventListener("click",()=>{
+            hideGameOverPopup();
+        })
+    }
 }
 
 function restartGame(){
@@ -216,6 +223,7 @@ function showGameOverPopup(){
     const scoreEl=document.getElementById("finalScoreText");
     if(scoreEl) scoreEl.textContent="Your Score: " + score;
     if(overlay) overlay.classList.remove("hidden");
+    document.getElementById("finalScoreText").textContent=score;
 }
 
 function hideGameOverPopup(){
@@ -252,13 +260,13 @@ function loadImages(){
     redGhostImage.src="./redGhost.png";
 
     pacmanUpImage=new Image();
-    pacmanUpImage.src="./pacmanUp2.png";
+    pacmanUpImage.src="./pacmanUp.png";
     pacmanDownImage=new Image();
-    pacmanDownImage.src="./pacmanDown2.png";
+    pacmanDownImage.src="./pacmanDown.png";
     pacmanLeftImage=new Image();
-    pacmanLeftImage.src="./pacmanLeft2.png";
+    pacmanLeftImage.src="./pacmanLeft.png";
     pacmanRightImage=new Image();
-    pacmanRightImage.src="./pacmanRight2.png";
+    pacmanRightImage.src="./pacmanRight.png";
 
     smallCherryImage=new Image();
     smallCherryImage.src="./smallCherry.png";
