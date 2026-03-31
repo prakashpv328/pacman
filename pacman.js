@@ -16,6 +16,13 @@ let pacmanDownImage;
 let pacmanLeftImage;
 let pacmanRightImage;
 
+let pacmanFullUpImage;
+let pacmanFullDownImage;
+let pacmanFullLeftImage;
+let pacmanFullRightImage;
+
+let pacmanCloseImage;
+
 let wallImage;
 
 let smallCherryImage;
@@ -156,6 +163,64 @@ let shieldStartScore=0
 const HEART_SPAWN_LIFETIME=10000;
 let heartSpawnedAt=0;
 
+let pacmanAnimIndex=0;
+let pacmanAnimTick=0;
+const PACMAN_ANIM_EVERY_TICKS=2;
+
+function getPacmanIdleImageByDirection(dir){
+    if(dir==='U') return pacmanUpImage;
+    if(dir==='D') return pacmanDownImage;
+    if(dir==='L') return pacmanLeftImage;
+    return pacmanRightImage;
+}
+
+function getPacmanFullImageByDirection(dir){
+    if(dir==='U') return pacmanFullUpImage;
+    if(dir==='D') return pacmanFullDownImage;
+    if(dir==='L') return pacmanFullLeftImage;
+    return pacmanFullRightImage;
+}
+
+function getPacmanOpenImageByDirection(dir){
+    return pacmanCloseImage;
+}
+
+function updatePacmanAnimation(){
+    const isMoving=(pacman.velocityX!==0 || pacman.velocityY!==0);
+
+    if(!isMoving){
+        pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+        pacmanAnimIndex=0;
+        pacmanAnimTick=0;
+        return;
+    }
+
+    pacmanAnimTick++;
+    if(pacmanAnimTick>=PACMAN_ANIM_EVERY_TICKS){
+        pacmanAnimTick=0;
+        pacmanAnimIndex=(pacmanAnimIndex+1)%3;
+    }
+
+    if(pacmanAnimIndex===0){
+        pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+    }
+    else if(pacmanAnimIndex===1){
+        pacman.image=getPacmanFullImageByDirection(pacman.direction);
+    }
+    else{
+        pacman.image=getPacmanOpenImageByDirection(pacman.direction);
+    }
+}
+
+function isLobbyVisible(){
+    const lobby=document.getElementById("lobbyOverlay");
+    return !!(lobby && !lobby.classList.contains("hidden"));
+}
+
+function isGameOverVisible(){
+    const over=document.getElementById("gameOverOverlay");
+    return !!(over && !over.classList.contains("hidden"));
+}
 
 
 window.onload=function(){
@@ -187,6 +252,8 @@ window.onload=function(){
 
     this.document.addEventListener("keydown",movePacman);
 
+    this.document.addEventListener("keydown",handleUiKeys);
+
 
     // selectRandomMap();
     // loadMap();
@@ -210,6 +277,30 @@ window.onload=function(){
     // }
 }
 
+function handleUiKeys(e){
+    if(isLobbyVisible()){
+        if(e.code==="Enter"){
+            e.preventDefault();
+            startGame();
+        }
+        return;
+    }
+
+    if(isGameOverVisible()){
+        if(e.code==="Enter"){
+            e.preventDefault();
+            restartGame();
+            return;
+        }
+        if(e.code==="Backspace"){
+            e.preventDefault();
+            goToLobby();
+            return;
+        }
+        return;
+    }
+}
+
 function showLobby(){
     const lobby=document.getElementById("lobbyOverlay");
     if(lobby) lobby.classList.remove("hidden");
@@ -223,7 +314,7 @@ function hideLobby(){
 function showGameOverPopup(){
     const overlay=document.getElementById("gameOverOverlay");
     const scoreEl=document.getElementById("finalScoreText");
-    if(scoreEl) scoreEl.textContent="Your Score: " + score;
+    if(scoreEl) scoreEl.textContent="Your Score: "+score;
     if(overlay) overlay.classList.remove("hidden");
 }
 
@@ -338,6 +429,15 @@ function loadImages(){
     redGhostImage=new Image();
     redGhostImage.src="./redGhost.png";
 
+    pacmanFullUpImage=new Image();
+    pacmanFullUpImage.src="./pacmanFullUp.png";
+    pacmanFullDownImage=new Image();
+    pacmanFullDownImage.src="./pacmanFullDown.png";
+    pacmanFullLeftImage=new Image();
+    pacmanFullLeftImage.src="./pacmanFullLeft.png";
+    pacmanFullRightImage=new Image();
+    pacmanFullRightImage.src="./pacmanFullRight.png";
+
     pacmanUpImage=new Image();
     pacmanUpImage.src="./pacmanUp.png";
     pacmanDownImage=new Image();
@@ -346,6 +446,9 @@ function loadImages(){
     pacmanLeftImage.src="./pacmanLeft.png";
     pacmanRightImage=new Image();
     pacmanRightImage.src="./pacmanRight.png";
+
+    pacmanCloseImage=new Image();
+    pacmanCloseImage.src="./pacmanClose.png";
 
     smallCherryImage=new Image();
     smallCherryImage.src="./smallCherry.png";
@@ -423,6 +526,14 @@ function loadMap(){
     shieldTimer=0;
 
     shieldStartScore=score;
+
+    pacmanAnimIndex=0;
+    pacmanAnimTick=0;
+    pacman.direction='R';
+    pacman.velocityX=0;
+    pacman.velocityY=0;
+    pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+
 }
 
 function makeCherry(image,col,row,points){
@@ -626,12 +737,12 @@ function canMoveInDirection(block,direction){
     return true;
 }
 
-function setPacmanImageByDirection(){
-    if(pacman.direction=='U') pacman.image=pacmanUpImage;
-    else if(pacman.direction=='D') pacman.image=pacmanDownImage;
-    else if(pacman.direction=='L') pacman.image=pacmanLeftImage;
-    else if(pacman.direction=='R') pacman.image=pacmanRightImage;
-}
+// function setPacmanImageByDirection(){
+//     if(pacman.direction=='U') pacman.image=pacmanUpImage;
+//     else if(pacman.direction=='D') pacman.image=pacmanDownImage;
+//     else if(pacman.direction=='L') pacman.image=pacmanLeftImage;
+//     else if(pacman.direction=='R') pacman.image=pacmanRightImage;
+// }
 
 function heartSpawn(){
 
@@ -709,7 +820,6 @@ function move(){
     if(nextPacmanDirection && canMoveInDirection(pacman,nextPacmanDirection)){
         pacman.direction=nextPacmanDirection;
         pacman.updateVelocity();
-        setPacmanImageByDirection();
     }
 
     pacman.x+=pacman.velocityX;
@@ -721,9 +831,14 @@ function move(){
         if(collision(pacman,wall)){
             pacman.x-=pacman.velocityX;
             pacman.y-=pacman.velocityY;
+
+            pacman.velocityX=0;
+            pacman.velocityY=0;
             break;
         }
     }
+
+    updatePacmanAnimation();
 
     for(let ghost of ghosts.values()){
         if(collision(ghost,pacman)){
@@ -869,6 +984,10 @@ function resetPositions(){
     pacman.velocityY=0;
 
     nextPacmanDirection=null;
+
+    pacmanAnimIndex=0;
+    pacmanAnimTick=0;
+    pacman.image=getPacmanIdleImageByDirection(pacman.direction);
 
     for(let ghost of ghosts.values()){
         ghost.reset();
