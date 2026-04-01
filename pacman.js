@@ -514,6 +514,10 @@ function loadMap(){
         }
     }
 
+    if(!pacman){
+        pacman=new Block(null,0,0,0,0);
+    }
+
     // placeCherriesAndRemoveDots();
 
     nextPacmanDirection=null;
@@ -665,7 +669,9 @@ function update(){
 
 function draw(){
     context.clearRect(0,0,board.width,board.height);
-    context.drawImage(pacman.image,pacman.x,pacman.y,pacman.width,pacman.height);
+    if(pacman && pacman.image){
+        context.drawImage(pacman.image,pacman.x,pacman.y,pacman.width,pacman.height);
+    }
 
 
     for(let ghost of ghosts.values()){
@@ -732,7 +738,7 @@ function canMoveInDirection(block,direction){
     };
 
     for(let wall of walls.values()){
-        if(collision(test,wall)) return false;
+        if(pacman && collision(test,wall)) return false;
     }
     return true;
 }
@@ -813,6 +819,8 @@ function activateShield(){
 
 function move(){
 
+    if(!pacman) return;
+
     // updateShieldState();
     heartSpawn();
     shieldSpawn();
@@ -828,7 +836,7 @@ function move(){
     wrapEntity(pacman);
 
     for(let wall of walls.values()){
-        if(collision(pacman,wall)){
+        if(pacman && collision(pacman,wall)){
             pacman.x-=pacman.velocityX;
             pacman.y-=pacman.velocityY;
 
@@ -841,7 +849,7 @@ function move(){
     updatePacmanAnimation();
 
     for(let ghost of ghosts.values()){
-        if(collision(ghost,pacman)){
+        if(pacman && collision(ghost,pacman)){
             if(!shieldActive){
                 lives-=1;
                 if(lives==0){
@@ -862,7 +870,7 @@ function move(){
         ghost.y+=ghost.velocityY;
 
         for(let wall of walls.values()){
-            if(collision(ghost,wall) || ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
+            if(pacman && collision(ghost,wall) || ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
                 ghost.x-=ghost.velocityX;
                 ghost.y-=ghost.velocityY;
                 const newDirection=directions[Math.floor(Math.random()*4)];
@@ -873,7 +881,7 @@ function move(){
 
     let foodEaten=null;
     for(let food of foods.values()){
-        if(collision(pacman,food)){
+        if(pacman && collision(pacman,food)){
             foodEaten=food;
             score+=10;
             break;
@@ -883,7 +891,7 @@ function move(){
 
     let cherryEaten=null;
     for(let cherry of cherries.values()){
-        if(collision(pacman,cherry)){
+        if(pacman && collision(pacman,cherry)){
             cherryEaten=cherry;
             score+=cherry.points;
             break;
@@ -894,7 +902,7 @@ function move(){
 
     let heartEaten=null;
     for(let heart of hearts.values()){
-        if(collision(pacman,heart)){
+        if(pacman && collision(pacman,heart)){
             heartEaten=heart;
             lives=Math.min(3,lives+1);
             break;
@@ -908,7 +916,7 @@ function move(){
 
     let shieldEaten=null;
     for(let shield of shields.values()){
-        if(collision(pacman,shield)){
+        if(pacman && collision(pacman,shield)){
             shieldEaten=shield;
             break;
         }
@@ -1024,7 +1032,7 @@ class Block{
         this.y+=this.velocityY;
 
         for(let wall of walls.values()){
-            if(collision(this,wall)){
+            if(pacman && collision(this,wall)){
                 this.x-=this.velocityX;
                 this.y-=this.velocityY;
 
