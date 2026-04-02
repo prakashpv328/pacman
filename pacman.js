@@ -24,6 +24,7 @@ let pacmanFullRightImage;
 let pacmanCloseImage;
 
 let wallImage;
+let wallImages=[];
 
 let smallCherryImage;
 let bigCherryImage;
@@ -157,7 +158,7 @@ const SHIELD_SPAWN_LIFETIME=10000;
 let shieldActive=false;
 let shieldTimer=0;
 let shieldSpawnedAt=0;
-let shieldStartScore=0
+let shieldStartScore=0;
 
 
 const HEART_SPAWN_LIFETIME=10000;
@@ -166,6 +167,168 @@ let heartSpawnedAt=0;
 let pacmanAnimIndex=0;
 let pacmanAnimTick=0;
 const PACMAN_ANIM_EVERY_TICKS=2;
+
+const SETTINGS_KEY="pacman_settings-v2";
+const gameSettings={
+    mapMode:"random",
+    mapIndex:0,
+    wallIndex:0,
+};
+
+let tempSettings={
+    mapMode:"random",
+    mapIndex:0,
+    wallIndex:0,
+};
+
+function loadSettings(){
+    try{
+        const raw=localStorage.getItem(SETTINGS_KEY);
+        if(!raw) return;
+        const s=JSON.parse(raw);
+
+        if(s && (s.mapMode==="random" || s.mapMode==="fixed")){
+            gameSettings.mapMode=s.mapMode;
+        }
+        if(Number.isInteger(s.mapIndex) && s.mapIndex>=0 && s.mapIndex<tileMaps.length){
+            gameSettings.mapIndex=s.mapIndex;
+        }
+        if(Number.isInteger(s.wallIndex) && s.wallIndex>=0 && s.wallIndex<4){
+            gameSettings.wallIndex=s.wallIndex;
+        }
+        
+    }
+    catch(_e){}
+}
+
+function saveSettingsToStorage(){
+    localStorage.setItem(SETTINGS_KEY,JSON.stringify(gameSettings));
+}
+
+function applyWallSelection(){
+    if(wallImages.length>=4){
+        wallImage=wallImages[gameSettings.wallIndex] || wallImages[0];
+    }
+}
+
+function isLobbyVisible(){
+    const lobby=document.getElementById("lobbyOverlay");
+    return !!(lobby && !lobby.classList.contains("hidden"));
+}
+
+function isGameOverVisible(){
+    const over=document.getElementById("gameOverOverlay");
+    return !!(over && !over.classList.contains("hidden"));
+}
+
+function isSettingsVisible(){
+    const settings=document.getElementById("settingsOverlay");
+    return !!(settings && !settings.classList.contains("hidden"));
+}
+
+function showSettings(){
+    const overlay=document.getElementById("settingsOverlay");
+    if(!overlay) return;
+
+    tempSettings={
+        mapMode:gameSettings.mapMode,
+        mapIndex:gameSettings.mapIndex,
+        wallIndex:gameSettings.wallIndex,
+    };
+
+    overlay.classList.remove("hidden");
+    renderSettings();
+}
+
+function hideSettings(){
+    const overlay=document.getElementById("settingsOverlay");
+    if(overlay) overlay.classList.add("hidden");
+}
+
+function setSelected(tile,selected){
+    if(!tile) return;
+    if(selected) tile.classList.add("selected");
+    else tile.classList.remove("selected");
+}
+
+function renderSettings(){
+    const randomTile=document.getElementById("mapRandomTile");
+    setSelected(randomTile,tempSettings.mapMode==="random");
+
+    for(let i=0;i<tileMaps.length;i++){
+        const tile=document.getElementById(`mapTile${i}`);
+        const selected=(tempSettings.mapMode==="fixed" && tempSettings.mapIndex===i);
+        setSelected(tile,selected);
+    }
+
+    for(let w=0;w<4;w++){
+        const tile = document.getElementById(`wallTile${w}`);
+        setSelected(tile,tempSettings.wallIndex===w);
+    }
+}
+
+function bindSettingsTileEvents(){
+    const randomTile=document.getElementById("mapRandomTile");
+    if(randomTile){
+        randomTile.addEventListener("click",()=>{
+            tempSettings.mapMode="random";
+            renderSettings();
+        });
+    }
+
+    for(let i=0;i<tileMaps.length;i++){
+        const tile=document.getElementById(`mapTile${i}`);
+        if(tile){
+            tile.addEventListener("click",()=>{
+                tempSettings.mapMode="fixed";
+                tempSettings.mapIndex=i;
+                renderSettings();
+
+            })
+        }
+    }
+
+    for(let w=0;w<4;w++){
+        const tile=document.getElementById(`wallTile${w}`);
+        if(tile){
+            tile.addEventListener("click",()=>{
+                tempSettings.wallIndex=w;
+                renderSettings();
+            });
+        }
+    }
+}
+
+function saveSettings(){
+    gameSettings.mapMode=tempSettings.mapMode;
+    gameSettings.mapIndex=tempSettings.mapIndex;
+    gameSettings.wallIndex=tempSettings.wallIndex;
+
+    applyWallSelection();
+    saveSettingsToStorage();
+}
+
+function selectMapBySettings(){
+    if(tileMaps.length==0) return;
+
+    if(gameSettings.mapMode==="fixed"){
+        const idx=gameSettings.mapIndex;
+        lastMapIndex=idx;
+        tileMap=tileMaps[idx];
+        return;
+    }
+
+    let idx=Math.floor(Math.random()*tileMaps.length);
+
+    if(tileMaps.length>1){
+        while(idx===lastMapIndex){
+            idx=Math.floor(Math.random()*tileMaps.length);
+        }
+    }
+
+    lastMapIndex=idx;
+    tileMap=tileMaps[idx];
+}
 
 function getPacmanIdleImageByDirection(dir){
     if(dir==='U') return pacmanUpImage;
@@ -212,15 +375,7 @@ function updatePacmanAnimation(){
     }
 }
 
-function isLobbyVisible(){
-    const lobby=document.getElementById("lobbyOverlay");
-    return !!(lobby && !lobby.classList.contains("hidden"));
-}
 
-function isGameOverVisible(){
-    const over=document.getElementById("gameOverOverlay");
-    return !!(over && !over.classList.contains("hidden"));
-}
 
 
 window.onload=function(){
@@ -235,7 +390,11 @@ window.onload=function(){
     board.width=boardWidth;
     context=board.getContext("2d");
 
+    loadSettings();
     loadImages();
+
+    bindSettingsTileEvents();
+
 
     const startBtn=this.document.getElementById("startBtn");
     if(startBtn) startBtn.addEventListener("click",startGame);
@@ -248,11 +407,32 @@ window.onload=function(){
     const lobbyBtn=this.document.getElementById("lobbyBtn");
     if(lobbyBtn) lobbyBtn.addEventListener("click",goToLobby);
 
+    const settingsBtn=this.document.getElementById("settingsBtn");
+    if(settingsBtn) settingsBtn.addEventListener("click",()=>{
+        if(isLobbyVisible()) showSettings();
+    })
+
+    const settingsCloseBtn=this.document.getElementById("settingsCloseBtn");
+    if(settingsCloseBtn) settingsCloseBtn.addEventListener("click",hideSettings);
+
+    const settingsSaveBtn=this.document.getElementById("settingsSaveBtn");
+    if(settingsSaveBtn) settingsSaveBtn.addEventListener("click",()=>{
+        saveSettings();
+        hideSettings();
+    });
+
     showLobby();
 
     this.document.addEventListener("keydown",movePacman);
 
     this.document.addEventListener("keydown",handleUiKeys);
+
+    this.document.addEventListener("keydown",(e)=>{
+        if(isSettingsVisible() && e.code==="Escape"){
+            e.preventDefault();
+            hideSettings();
+        }
+    });
 
 
     // selectRandomMap();
@@ -278,6 +458,16 @@ window.onload=function(){
 }
 
 function handleUiKeys(e){
+    if(isSettingsVisible()){
+        if(e.code==="Enter"){
+            e.preventDefault();
+            saveSettings();
+            hideSettings();
+        }
+        return;
+    }
+
+
     if(isLobbyVisible()){
         if(e.code==="Enter"){
             e.preventDefault();
@@ -314,7 +504,7 @@ function hideLobby(){
 function showGameOverPopup(){
     const overlay=document.getElementById("gameOverOverlay");
     const scoreEl=document.getElementById("finalScoreText");
-    if(scoreEl) scoreEl.textContent="Your Score: "+score;
+    if(scoreEl) scoreEl.textContent=String(score);
     if(overlay) overlay.classList.remove("hidden");
 }
 
@@ -325,6 +515,7 @@ function hideGameOverPopup(){
 
 function goToLobby(){
     hideGameOverPopup();
+    hideSettings();
 
     gameStarted=false;
     gameOver=false;
@@ -348,6 +539,7 @@ function goToLobby(){
 
 function startGame(){
     hideLobby();
+    hideSettings();
 
     gameStarted=true;
     gameOver=false;
@@ -364,7 +556,7 @@ function startGame(){
     shieldTimer=0;
     shieldStartScore=0;
 
-    selectRandomMap();
+    selectMapBySettings();
     loadMap();
 
     for(let ghost of ghosts.values()){
@@ -377,6 +569,7 @@ function startGame(){
 
 function restartGame(){
     hideGameOverPopup();
+    hideSettings();
 
     lives=3;
     score=0;
@@ -394,31 +587,37 @@ function restartGame(){
     heartSpawnedAt=0;
     hearts.clear();
 
-    selectRandomMap();
+    selectMapBySettings();
     loadMap();
     resetPositions();
 
     update();
 }
 
-function selectRandomMap(){
-    if(tileMaps.length==0) return;
+// function selectRandomMap(){
+//     if(tileMaps.length==0) return;
 
-    let idx=Math.floor(Math.random()*tileMaps.length);
+//     let idx=Math.floor(Math.random()*tileMaps.length);
 
-    if(tileMaps.length>1){
-        while(idx===lastMapIndex){
-            idx=Math.floor(Math.random()*tileMaps.length);
-        }
-    }
+//     if(tileMaps.length>1){
+//         while(idx===lastMapIndex){
+//             idx=Math.floor(Math.random()*tileMaps.length);
+//         }
+//     }
 
-    lastMapIndex=idx;
-    tileMap=tileMaps[idx];
-}
+//     lastMapIndex=idx;
+//     tileMap=tileMaps[idx];
+// }
 
 function loadImages(){
-    wallImage=new Image();
-    wallImage.src="./wall.png";
+
+    wallImages=[];
+    for(let i=1;i<=4;i++){
+        const img=new Image();
+        img.src=`./wall${i}.png`;
+        wallImages.push(img);
+    }
+    applyWallSelection();
 
     blueGhostImage=new Image();
     blueGhostImage.src="./blueGhost.png";
@@ -469,6 +668,8 @@ function loadMap(){
     cherries.clear();
     hearts.clear();
     shields.clear();
+
+    applyWallSelection();
 
     for(let r=0;r<rowCount;r++){
         for(let c=0;c<columnCount;c++){
@@ -738,7 +939,7 @@ function canMoveInDirection(block,direction){
     };
 
     for(let wall of walls.values()){
-        if(pacman && collision(test,wall)) return false;
+        if(collision(test,wall)) return false;
     }
     return true;
 }
@@ -752,8 +953,7 @@ function canMoveInDirection(block,direction){
 
 function heartSpawn(){
 
-    if(hearts.size>0 && heartSpawnedAt>0 && (Date.now()-
-heartSpawnedAt)>=HEART_SPAWN_LIFETIME){
+    if(hearts.size>0 && heartSpawnedAt>0 && (Date.now()-heartSpawnedAt)>=HEART_SPAWN_LIFETIME){
     hearts.clear();
     heartSpawnedAt=0;
 }
@@ -927,7 +1127,7 @@ function move(){
     } 
 
     if(foods.size==0 && cherries.size==0){
-        selectRandomMap();
+        selectMapBySettings();
         loadMap();
         resetPositions();
     }
@@ -984,7 +1184,7 @@ function collision(a,b){
             a.x+a.width>b.x &&
             a.y<b.y+b.height &&
             a.y+a.height>b.y
-}
+};
 
 function resetPositions(){
     pacman.reset();
