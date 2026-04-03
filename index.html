@@ -74,75 +74,30 @@
                     </div>
 
                     <div class="settings-body">
-                        <div class="setting-section">
-                            <div class="setting-title-row">
-                                <div class="setting-title">Map</div>
-                                <div class="setting-subtitle">Default: Random</div>
-                            </div>
-
-                            <div class="option-grid">
-                                <button class="option-tile" type="button" data-map-mode="random" id="mapRandomTile">
-                                    <div class="tile-thumb tile-thumb-random">
-                                        <div class="random-badge">RANDOM</div>
-                                    </div>
-                                    <div class="tile-label">
-                                        Random
-                                    </div>
-                                </button>
-
-                                <button class="option-tile" type="button" data-map-index="0" id="mapTile0">
-                                    <img src="./pacmanMap1.png" alt="Map 1 preview" class="tile-thumb"/>
-                                    <div class="tile-label">Map 1</div>
-                                </button>
-
-                                <button class="option-tile" type="button" data-map-index="1" id="mapTile1">
-                                    <img src="./pacmanMap2.png" alt="Map 2 preview" class="tile-thumb"/>
-                                    <div class="tile-label">Map 2</div>
-                                </button>
-
-                                <button class="option-tile" type="button" data-map-index="2" id="mapTile2">
-                                    <img src="./pacmanMap3.png" alt="Map 3 preview" class="tile-thumb"/>
-                                    <div class="tile-label">Map 3</div>
-                                </button>
-
-                                <button class="option-tile" type="button" data-map-index="3" id="mapTile3">
-                                    <img src="./pacmanMap4.png" alt="Map 4 preview" class="tile-thumb"/>
-                                    <div class="tile-label">Map 4</div>
-                                </button>
-
-                            </div>
+                        <div class="setting-title-row">
+                            <div class="setting-title">Map</div>
+                            <div class="setting-subtitle">Default: Random</div>
                         </div>
 
-                        <div class="setting-section">
-                            <div class="setting-title-row">
-                                <div class="setting-title">Wall</div>
-                                <div class="setting-subtitle">Default :Wall 1</div>
-                            </div>
-
-                            <div class="option-grid option-grid-walls">
-
-                                <button class="option-tile" type="button" data-wall-index="0" id="wallTile0">
-                                    <img src="./wall1.png" alt="Wall 1 preview" class="tile-thumb tile-thumb-wall"/>
-                                    <div class="tile-label">Wall 1</div>
-                                </button>
-
-                                <button class="option-tile" type="button" data-wall-index="1" id="wallTile1">
-                                    <img src="./wall2.png" alt="Wall 2 preview" class="tile-thumb tile-thumb-wall"/>
-                                    <div class="tile-label">Wall 2</div>
-                                </button>
-
-                                <button class="option-tile" type="button" data-wall-index="2" id="wallTile2">
-                                    <img src="./wall3.png" alt="Wall 3 preview" class="tile-thumb tile-thumb-wall"/>
-                                    <div class="tile-label">Wall 3</div>
-                                </button>
-
-                                <button class="option-tile" type="button" data-wall-index="3" id="wallTile3">
-                                    <img src="./wall4.png" alt="Wall 4 preview" class="tile-thumb tile-thumb-wall"/>
-                                    <div class="tile-label">Wall 4</div>
-                                </button>
-
-                            </div>
+                        <div class="settings-strip" aria-label="Map selection" id="mapStrip">
+                            <button class="option-tile" type="button" data-map-mode="random" id="mapRandomTile">
+                                <div class="tile-thumb tile-thumb-random">
+                                    <div class="random-badge">RANDOM</div>
+                                </div>
+                                <div class="tile-label">
+                                    Random
+                                </div>
+                            </button>
                         </div>
+
+                        <div class="setting-title-row" style="margin-top:14px">
+                            <div class="setting-title">Walls</div>
+                            <div class="setting-subtitle">game Walls</div>
+                        </div>
+
+                        <div id="wallStrip" class="settings-strip" aria-label="wall selection">
+
+                        </div>                         
                     </div>
 
                     <div class="actions">
@@ -153,6 +108,29 @@
                     <div class="hint">
                         Tip: Press <b>Esc</b> to close. Press <b>Enter</b> to save.
                     </div>
+                </div>
+            </div>
+
+            <div id="mapZoomOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Map preview">
+                <div class="card card-zoom">
+                    <div class="zoom-body">
+                        <canvas id="mapZoomCanvas" class="zoom-canvas"></canvas>
+                    </div>
+
+                    <div class="zoom-actions">
+                        <button id="zoomSelectBtn" class="btn btn-primary" type="button">
+                            Select this map
+                        </button>
+
+                        <button id="zoomCloseBtn" class="btn btn-ghost" type="button">
+                            Close
+                        </button>
+                    </div>
+
+                    <div class="hint" style="margin-top:10px">
+                        Tip:Click outSide or press <b>Esc</b> to close. Press <b>Enter</b> to select.
+                    </div>
+
                 </div>
             </div>
             
@@ -186,4 +164,3 @@
         </div>
     </body>
 </html>
-

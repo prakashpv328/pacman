@@ -292,38 +292,8 @@ function renderSettings(){
         const tile = document.getElementById(`wallTile${w}`);
         setSelected(tile,tempSettings.wallIndex===w);
     }
-}
 
-function bindSettingsTileEvents(){
-    const randomTile=document.getElementById("mapRandomTile");
-    if(randomTile){
-        randomTile.addEventListener("click",()=>{
-            tempSettings.mapMode="random";
-            renderSettings();
-        });
-    }
-
-    for(let i=0;i<tileMaps.length;i++){
-        const tile=document.getElementById(`mapTile${i}`);
-        if(tile){
-            tile.addEventListener("click",()=>{
-                tempSettings.mapMode="fixed";
-                tempSettings.mapIndex=i;
-                renderSettings();
-
-            });
-        }
-    }
-
-    for(let w=0;w<4;w++){
-        const tile=document.getElementById(`wallTile${w}`);
-        if(tile){
-            tile.addEventListener("click",()=>{
-                tempSettings.wallIndex=w;
-                renderSettings();
-            });
-        }
-    }
+    renderMapPreviews();
 }
 
 function saveSettings(){
@@ -445,7 +415,7 @@ window.onload=function(){
     loadSettings();
     loadImages();
 
-    bindSettingsTileEvents();
+    buildSettingsUi();
 
 
     const startBtn=this.document.getElementById("startBtn");
@@ -473,6 +443,19 @@ window.onload=function(){
         hideSettings();
     });
 
+    const  zoomCloseBtn=this.document.getElementById("zoomCloseBtn");
+    if(zoomCloseBtn) zoomCloseBtn.addEventListener("click",closeMapZoom);
+
+    const zoomSelectBtn=this.document.getElementById("zoomSelectBtn");
+    if(zoomSelectBtn) zoomSelectBtn.addEventListener("click",confirmZoomSelection);
+
+    const zoomOverlay=this.document.getElementById("mapZoomOverlay");
+    if(zoomOverlay){
+        zoomOverlay.addEventListener("click",(e)=>{
+            if(e.target===zoomOverlay) closeMapZoom();
+        })
+    }
+
     showLobby();
 
     this.document.addEventListener("keydown",movePacman);
@@ -484,32 +467,23 @@ window.onload=function(){
             e.preventDefault();
             hideSettings();
         }
+        if(isMapZoomVisible() && e.code==="Escape"){
+            e.preventDefault();
+            closeMapZoom();
+        }
     });
-
-
-    // selectRandomMap();
-    // loadMap();
-
-    // console.log(walls.size);
-    // console.log(foods.size);
-    // console.log(ghosts.size);
-
-    // for(let ghost of ghosts.values()){
-    //     const newDirection=directions[Math.floor(Math.random()*4)];
-    //     ghost.updateDirection(newDirection);
-    // }
-    // update();
-    // document.addEventListener("keydown",movePacman);
-
-    // const closeBtn=this.document.getElementById("closeBtn");
-    // if(closeBtn){
-    //     closeBtn.addEventListener("click",()=>{
-    //         hideGameOverPopup();
-    //     })
-    // }
 }
 
 function handleUiKeys(e){
+    if(isMapZoomVisible()){
+        if(e.code==="Enter"){
+            e.preventDefault();
+            confirmZoomSelection();
+        }
+        return;
+    }
+
+
     if(isSettingsVisible()){
         if(e.code==="Enter"){
             e.preventDefault();
@@ -569,6 +543,7 @@ function goToLobby(){
     stopLoop();
     hideGameOverPopup();
     hideSettings();
+    closeMapZoom();
 
     gameStarted=false;
     gameOver=false;
@@ -593,6 +568,7 @@ function goToLobby(){
 function startGame(){
     hideLobby();
     hideSettings();
+    closeMapZoom();
 
     gameStarted=true;
     gameOver=false;
@@ -623,6 +599,7 @@ function startGame(){
 function restartGame(){
     hideGameOverPopup();
     hideSettings();
+    closeMapZoom();
 
     lives=3;
     score=0;
@@ -647,21 +624,6 @@ function restartGame(){
     startLoop();
 }
 
-// function selectRandomMap(){
-//     if(tileMaps.length==0) return;
-
-//     let idx=Math.floor(Math.random()*tileMaps.length);
-
-//     if(tileMaps.length>1){
-//         while(idx===lastMapIndex){
-//             idx=Math.floor(Math.random()*tileMaps.length);
-//         }
-//     }
-
-//     lastMapIndex=idx;
-//     tileMap=tileMaps[idx];
-// }
-
 function loadImages(){
 
     wallImages=[];
@@ -670,7 +632,6 @@ function loadImages(){
         img.src=`./wall${i}.png`;
         wallImages.push(img);
     }
-    applyWallSelection();
 
     blueGhostImage=new Image();
     blueGhostImage.src="./blueGhost.png";
@@ -712,6 +673,8 @@ function loadImages(){
 
     heartImage=new Image();
     heartImage.src="./life.png";
+
+    applyWallSelection();
 }
 
 function rebuildWallGrid(wallCoords){
@@ -767,50 +730,6 @@ function loadMap(){
         ghosts.add(new Block(img,x,y,tileSize,tileSize));
     }
 
-    // for(let r=0;r<rowCount;r++){
-    //     for(let c=0;c<columnCount;c++){
-    //         const row=tileMap[r];
-    //         const tileMapChar=row[c];
-
-    //         const x=c*tileSize;
-    //         const y=r*tileSize;
-
-    //         if(tileMapChar==='X'){
-    //             const wall = new Block(wallImage,x,y,tileSize,tileSize);
-    //             walls.add(wall);
-    //         }
-    //         else if(tileMapChar==='b'){
-    //             const ghost =new Block(blueGhostImage,x,y,tileSize,tileSize);
-    //             ghosts.add(ghost);
-    //         }
-    //         else if(tileMapChar==='r'){
-    //             const ghost=new Block(redGhostImage,x,y,tileSize,tileSize);
-    //             ghosts.add(ghost);
-    //         }
-    //         else if(tileMapChar==='p'){
-    //             const ghost=new Block(pinkGhostImage,x,y,tileSize,tileSize);
-    //             ghosts.add(ghost);
-    //         }
-    //         else if(tileMapChar==='o'){
-    //             const ghost=new Block(orangeGhostImage,x,y,tileSize,tileSize);
-    //             ghosts.add(ghost);
-    //         }
-    //         else if(tileMapChar==='P'){
-    //             pacman=new Block(pacmanRightImage,x,y,tileSize,tileSize);
-    //         }
-    //         else if(tileMapChar==='s'){
-    //             cherries.add(makeCherry(smallCherryImage,c,r,50));
-    //         }
-    //         else if(tileMapChar==='l'){
-    //             cherries.add(makeCherry(bigCherryImage,c,r,100));
-    //         }
-    //         else if(tileMapChar===' '){
-    //             const food=new Block(null,x+14,y+14,4,4);
-    //             foods.add(food);
-    //         }
-    //     }
-    // }
-
     if(!pacman){
         pacman=new Block(pacmanRightImage,0,0,tileSize,tileSize);
     }
@@ -821,8 +740,6 @@ function loadMap(){
     pacman.width=tileSize;
     pacman.height=tileSize;
     pacman.image=pacmanRightImage;
-
-    // placeCherriesAndRemoveDots();
 
     nextPacmanDirection=null;
 
@@ -859,66 +776,6 @@ function makeCherry(image,col,row,points){
     return cherry;
 }
 
-// function tileCenterToDotBlock(col,row){
-//     return {x:col*tileSize+14,y:row*tileSize+14};
-// }
-
-// function removeDotAtTile(col,row){
-//     const dotPos=tileCenterToDotBlock(col,row);
-//     let dotToRemove=null;
-
-//     for(let food of foods.values()){
-//         if(food.x===dotPos.x && food.y===dotPos.y){
-//             dotToRemove=food;
-//             break;
-//         }
-//     }
-
-//     if(dotToRemove) foods.delete(dotToRemove);
-// }
-
-// function isWallTile(col,row){
-//     const x=col*tileSize;
-//     const y=row*tileSize;
-
-//     for(let w of walls.values()){
-//         if(w.x===x && w.y===y) return true;
-//     }
-
-//     return false;
-// }
-
-// function placeCherriesAndRemoveDots(){
-//     const smallPositions=[
-//         {c:1,r:5},
-//         {c:17,r:5},
-//         {c:1,r:19},
-//         {c:17,r:19},
-//         {c:9,r:3},
-//         {c:9,r:11},
-//     ];
-
-//     const bigPositions=[
-//         {c:1,r:9},
-//         {c:17,r:9},
-//     ];
-
-//     for(const p of smallPositions){
-//         if(!isWallTile(p.c,p.r)){
-//             cherries.add(makeCherry(smallCherryImage,p.c,p.r,50));
-//             removeDotAtTile(p.c,p.r);
-//         }
-//     }
-
-//     for(const p of bigPositions){
-//         if(!isWallTile(p.c,p.r)){
-//             cherries.add(makeCherry(bigCherryImage,p.c,p.r,100));
-//             removeDotAtTile(p.c,p.r);
-//         }
-//     }
-// }
-
-
 function makePickup(image,col,row){
     const x=col*tileSize;
     const y=row*tileSize;
@@ -939,23 +796,6 @@ function isTileBlocked(col,row){
 
     return occupiedTiles.has(tileKey(col,row));
 }
-
-// function isTileBlocked(col,row){
-//     const x=col*tileSize;
-//     const y=row*tileSize;
-
-//     for(let w of walls.values()){
-//         if(w.x===x && w.y===y) return true;
-//     }
-
-//     if( pacman && pacman.x===x && pacman.y===y) return true;
-
-//     for(let g of ghosts.values()){
-//         if(g.x===x && g.y===y) return true;
-//     }
-//     return false;
-// }
-
 
 function randomEmptyTile(){
     let tries=0;
@@ -1020,16 +860,6 @@ function tick(){
     move();
 }
 
-// function update(){
-//     if(!gameStarted) return;
-//     if(gameOver){
-//         return;
-//     }
-//     move();
-//     draw();
-//     setTimeout(update,50);
-// }
-
 function draw(){
     context.clearRect(0,0,board.width,board.height);
 
@@ -1073,11 +903,6 @@ function draw(){
         shieldText="Shield: "+(msLeft/1000).toFixed(1)+"s";
     }
 
-    // if(gameOver){
-    //     context.fillText("Game Over: "+String(score),tileSize/2,tileSize/2);
-    // }
-    // else{
-    // }
     context.fillText("x"+String(lives)+ " "+String(score)+ " " +shieldText,tileSize/2,tileSize/2)
 }
 
@@ -1107,20 +932,12 @@ function canMoveInDirection(block,direction){
     return true;
 }
 
-// function setPacmanImageByDirection(){
-//     if(pacman.direction=='U') pacman.image=pacmanUpImage;
-//     else if(pacman.direction=='D') pacman.image=pacmanDownImage;
-//     else if(pacman.direction=='L') pacman.image=pacmanLeftImage;
-//     else if(pacman.direction=='R') pacman.image=pacmanRightImage;
-// }
-
 function heartSpawn(){
 
     if(hearts.size>0 && heartSpawnedAt>0 && (Date.now()-heartSpawnedAt)>=HEART_SPAWN_LIFETIME){
     hearts.clear();
     heartSpawnedAt=0;
 }
-
 
     if(lives>=3) return;
 
@@ -1163,15 +980,6 @@ function shieldSpawn(){
     shieldSpawnedAt=Date.now();
 }
 
-// function updateShieldState(){
-//     if(!shieldActive) return;
-
-//     if(Date.now()>=shieldTimer){
-//         shieldActive=false;
-//         shieldTimer=0;
-//     }
-// }
-
 function activateShield(){
     shieldActive=true;
     shieldTimer=Date.now()+SHIELD_POWER_DURATION;
@@ -1182,7 +990,6 @@ function move(){
 
     if(!pacman) return;
 
-    // updateShieldState();
     heartSpawn();
     shieldSpawn();
 
@@ -1308,13 +1115,6 @@ function movePacman(e){
     if(!gameStarted) return;
 
     if(gameOver){
-        // selectRandomMap();
-        // loadMap();
-        // resetPositions();
-        // lives=3;
-        // score=0;
-        // gameOver=false;
-        // update();
         return;
     }
 
@@ -1330,19 +1130,6 @@ function movePacman(e){
     else if(e.code==='ArrowLeft' || e.code==="KeyA"){
         nextPacmanDirection='L';
     }
-    
-    // if(pacman.direction=='U'){
-    //     pacman.image=pacmanUpImage;
-    // }
-    // else if(pacman.direction=='D'){
-    //     pacman.image=pacmanDownImage;
-    // }
-    // else if(pacman.direction=='L'){
-    //     pacman.image=pacmanLeftImage;
-    // }
-    // else if(pacman.direction=='R'){
-    //     pacman.image=pacmanRightImage;
-    // }
 }
 
 function collision(a,b){
@@ -1433,3 +1220,176 @@ class Block{
         this.y=this.startY;
     }
 }
+
+function buildSettingsUi(){
+    const mapStrip=document.getElementById("mapStrip");
+    const wallStrip=document.getElementById("wallStrip");
+
+    if(!mapStrip || !wallStrip) return;
+
+    for(let i=0;i<tileMaps.length;i++){
+        const btn=document.createElement("button");
+        btn.className="option-tile";
+        btn.type="button";
+        btn.id=`mapTile${i}`;
+
+        const canvas=document.createElement("canvas");
+        canvas.className="tile-thumb";
+        canvas.width=190;
+        canvas.height=210;
+
+        const label=document.createElement("div");
+        label.className="tile-label"
+        label.textContent=`Map ${i+1}`;
+
+        btn.appendChild(canvas);
+        btn.appendChild(label);
+
+        btn.addEventListener("click",()=>{
+            tempSettings.mapMode="fixed";
+            tempSettings.mapIndex=i;
+            renderSettings();
+            openMapZoom(i);
+        });
+
+        mapStrip.appendChild(btn);
+    }
+
+    wallStrip.innerHTML="";
+
+    for(let w=0;w<4;w++){
+        const btn=document.createElement("button");
+        btn.className="option-tile";
+        btn.type="button";
+        btn.id=`wallTile${w}`;
+
+        const img=document.createElement("img");
+        img.className="wall-thumb";
+        img.src=`./wall${w+1}.png`;
+        img.alt=`Wall ${w+1}`;
+
+        const label=document.createElement("div");
+        label.className="tile-label";
+        label.textContent=`Wall ${w+1}`;
+
+        btn.appendChild(img);
+        btn.appendChild(label);
+
+        btn.addEventListener("click",()=>{
+            tempSettings.wallIndex=w;
+            renderSettings();
+        });
+
+        wallStrip.appendChild(btn);
+    }
+
+    const randomTile=document.getElementById("mapRandomTile");
+    if(randomTile){
+        randomTile.addEventListener("click",()=>{
+            tempSettings.mapMode="random";
+            renderSettings();
+        });
+    }
+
+    renderSettings();
+}
+
+function renderMapPreviews(){
+    const wallImg=wallImages[tempSettings.wallIndex] || wallImages[0];
+
+    for(let i=0;i<tileMaps.length;i++){
+        const tile=document.getElementById(`mapTile${i}`);
+        if(!tile) continue;
+
+        const canvas=tile.querySelector("canvas");
+        if(!canvas) continue;
+
+        drawMapPreview(canvas,tileMaps[i],wallImg,10);
+    }
+
+    if(isMapZoomVisible() && zoomSelectedMapIndex>=0){
+        const zc=document.getElementById("mapZoomCanvas");
+        if(zc) drawMapPreview(zc,tileMaps[zoomSelectedMapIndex],wallImg,zoomCellSize);
+    }
+}
+
+function drawMapPreview(canvas,mapRows,wallImg,cellSize){
+    const ctx=canvas.getContext("2d");
+    canvas.width=columnCount*cellSize;
+    canvas.height=rowCount*cellSize;
+
+    ctx.fillStyle="black";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    for(let r=0;r<rowCount;r++){
+        for(let c=0;c<columnCount;c++){
+            const ch=mapRows[r][c];
+            const x=c*cellSize;
+            const y=r*cellSize;
+
+            if(ch=="X"){
+                if(wallImg && wallImg.complete){
+                    ctx.drawImage(wallImg,x,y,cellSize,cellSize);
+                }
+                else{
+                    ctx.fillStyle="#2b74ff";
+                    ctx.fillRect(x,y,cellSize,cellSize);
+                }
+            }
+
+            else if(ch===" "){
+                const s=Math.max(1,Math.floor(cellSize/6));
+                const ox=Math.floor((cellSize-s)/2);
+                const oy=Math.floor((cellSize-s)/2);
+                ctx.fillStyle="rgba(255,255,255,0.9)";
+                ctx.fillRect(x+ox,y+oy,s,s);
+            }
+            else if(ch==="s"){
+                if(smallCherryImage && smallCherryImage.complete){
+                    ctx.drawImage(smallCherryImage,x+1,y+1,cellSize-2,cellSize-2);
+                }
+            }
+            else if(ch==="l"){
+                if(bigCherryImage && bigCherryImage.complete){
+                    ctx.drawImage(bigCherryImage,x+1,y+1,cellSize-2,cellSize-2);
+                }
+            }
+        }
+    }
+}
+
+let zoomSelectedMapIndex=-1;
+let zoomCellSize=20;
+
+function isMapZoomVisible(){
+    const el=document.getElementById("mapZoomOverlay");
+    return !!(el && !el.classList.contains("hidden"));
+}
+
+function openMapZoom(mapIndex){
+    zoomSelectedMapIndex=mapIndex;
+    const overlay=document.getElementById("mapZoomOverlay");
+    const canvas=document.getElementById("mapZoomCanvas");
+    if(!overlay || !canvas) return;
+    
+    overlay.classList.remove("hidden");
+    zoomCellSize=24;
+
+    const wallImg=wallImages[tempSettings.wallIndex] || wallImages[0];
+    drawMapPreview(canvas,tileMaps[mapIndex],wallImg,zoomCellSize);
+}
+
+function closeMapZoom(){
+    const overlay=document.getElementById("mapZoomOverlay");
+    if(overlay) overlay.classList.add("hidden");
+    zoomSelectedMapIndex=-1;
+}
+
+function confirmZoomSelection(){
+    if(zoomSelectedMapIndex<0) return;
+    tempSettings.mapMode="fixed";
+    tempSettings.mapIndex=zoomSelectedMapIndex;
+    renderSettings();
+    closeMapZoom();
+}
+
