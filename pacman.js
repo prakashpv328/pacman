@@ -64,15 +64,15 @@ const tileMap2=[
     "X XXXXXXX X XXXXX X",
     "X X     X X X     X",
     "X X XXX X X X XXX X",
-    "Xs  X   X   X  oX X",
-    "XXX X XXXXXXX X XXX",
+    "Xs  X   X   X  o  X",
+    "XX XX XXXXXXX X XXX",
     "X   Xb  X X   X   X",
     "X XXXXX X X XXXXX X",
     "O   l   X   X   l O",
     "X XXXXX X X XXXXX X",
     "X   Xp  XsX   X   X",
-    "XXX X XXXXXXX X XXX",
-    "X   X   X   X  rX X",
+    "XX XX XXXXXXX X XXX",
+    "X   X   X   X  r  X",
     "X X XXX X X X XXX X",
     "X X     X X X     X",
     "X XXXXXXX X XXXXX X",
@@ -143,6 +143,33 @@ const shields=new Set();
 
 let pacman;
 
+let wallGrid=null;
+const occupiedTiles=new Set();
+
+function tileKey(col,row){
+    return row*columnCount+col;
+}
+
+function pixelToTile(x,y){
+    return {
+        col:Math.floor(x/tileSize),
+        row:Math.floor(y/tileSize)
+    };
+}
+
+function setOccupiedFromEntities(){
+    occupiedTiles.clear();
+
+    if(pacman){
+        const t=pixelToTile(pacman.x,pacman.y);
+        occupiedTiles.add(tileKey(t.col,t.row));
+    }
+    for(const g of ghosts){
+        const t=pixelToTile(g.x,g.y);
+        occupiedTiles.add(tileKey(t.col,t.row));
+    }
+}
+
 const directions=['U','D','L','R'];
 let score=0;
 let lives=3;
@@ -168,7 +195,7 @@ let pacmanAnimIndex=0;
 let pacmanAnimTick=0;
 const PACMAN_ANIM_EVERY_TICKS=2;
 
-const SETTINGS_KEY="pacman_settings-v2";
+const SETTINGS_KEY="pacman_settings";
 const gameSettings={
     mapMode:"random",
     mapIndex:0,
@@ -284,7 +311,7 @@ function bindSettingsTileEvents(){
                 tempSettings.mapIndex=i;
                 renderSettings();
 
-            })
+            });
         }
     }
 
@@ -328,6 +355,34 @@ function selectMapBySettings(){
 
     lastMapIndex=idx;
     tileMap=tileMaps[idx];
+}
+
+const parsedMaps=tileMaps.map(parseTileMap);
+
+function parseTileMap(mapRows){
+    const wallCoords=[];
+    const foodCoords=[];
+    const cherrySmall=[];
+    const cherryBig=[];
+    const ghostSpawns=[];
+
+    let pacmanSpawn={r:0,c:0};
+
+    for(let r=0;r<rowCount;r++){
+        const row=mapRows[r];
+        for(let c=0;c<columnCount;c++){
+            const ch=row[c];
+
+            if(ch==="X") wallCoords.push({r,c});
+            else if(ch===" ") foodCoords.push({r,c});
+            else if(ch==="s") cherrySmall.push({r,c});
+            else if(ch==="l") cherryBig.push({r,c});
+            else if(ch==="P") pacmanSpawn={r,c};
+            else if(ch==="b" || ch==="r" || ch==="p" || ch==="o") ghostSpawns.push({r,c,key:ch});
+        }
+    }
+
+    return {wallCoords,foodCoords,cherrySmall,cherryBig,pacmanSpawn,ghostSpawns};
 }
 
 function getPacmanIdleImageByDirection(dir){
@@ -374,9 +429,6 @@ function updatePacmanAnimation(){
         pacman.image=getPacmanOpenImageByDirection(pacman.direction);
     }
 }
-
-
-
 
 window.onload=function(){
     board=document.getElementById("board");
@@ -514,6 +566,7 @@ function hideGameOverPopup(){
 }
 
 function goToLobby(){
+    stopLoop();
     hideGameOverPopup();
     hideSettings();
 
@@ -559,11 +612,11 @@ function startGame(){
     selectMapBySettings();
     loadMap();
 
-    for(let ghost of ghosts.values()){
+    for(const ghost of ghosts){
         ghost.updateDirection(directions[Math.floor(Math.random()*4)]);
     }
 
-    update();
+    startLoop();
 }
 
 
@@ -591,7 +644,7 @@ function restartGame(){
     loadMap();
     resetPositions();
 
-    update();
+    startLoop();
 }
 
 // function selectRandomMap(){
@@ -661,6 +714,11 @@ function loadImages(){
     heartImage.src="./life.png";
 }
 
+function rebuildWallGrid(wallCoords){
+    wallGrid=Array.from({length:rowCount},()=>Array(columnCount).fill(false));
+    for(const {r,c} of wallCoords) wallGrid[r][c]=true;
+}
+
 function loadMap(){
     walls.clear();
     foods.clear();
@@ -671,53 +729,98 @@ function loadMap(){
 
     applyWallSelection();
 
-    for(let r=0;r<rowCount;r++){
-        for(let c=0;c<columnCount;c++){
-            const row=tileMap[r];
-            const tileMapChar=row[c];
+    const mapIndex=tileMaps.indexOf(tileMap);
+    const parsed=parsedMaps[mapIndex>=0?mapIndex:0];
 
-            const x=c*tileSize;
-            const y=r*tileSize;
+    rebuildWallGrid(parsed.wallCoords);
 
-            if(tileMapChar==='X'){
-                const wall = new Block(wallImage,x,y,tileSize,tileSize);
-                walls.add(wall);
-            }
-            else if(tileMapChar==='b'){
-                const ghost =new Block(blueGhostImage,x,y,tileSize,tileSize);
-                ghosts.add(ghost);
-            }
-            else if(tileMapChar==='r'){
-                const ghost=new Block(redGhostImage,x,y,tileSize,tileSize);
-                ghosts.add(ghost);
-            }
-            else if(tileMapChar==='p'){
-                const ghost=new Block(pinkGhostImage,x,y,tileSize,tileSize);
-                ghosts.add(ghost);
-            }
-            else if(tileMapChar==='o'){
-                const ghost=new Block(orangeGhostImage,x,y,tileSize,tileSize);
-                ghosts.add(ghost);
-            }
-            else if(tileMapChar==='P'){
-                pacman=new Block(pacmanRightImage,x,y,tileSize,tileSize);
-            }
-            else if(tileMapChar==='s'){
-                cherries.add(makeCherry(smallCherryImage,c,r,50));
-            }
-            else if(tileMapChar==='l'){
-                cherries.add(makeCherry(bigCherryImage,c,r,100));
-            }
-            else if(tileMapChar===' '){
-                const food=new Block(null,x+14,y+14,4,4);
-                foods.add(food);
-            }
-        }
+    for(const {r,c} of parsed.wallCoords){
+        const x=c*tileSize;
+        const y=r*tileSize;
+        walls.add(new Block(wallImage,x,y,tileSize,tileSize));
     }
+
+    for(const {r,c} of parsed.foodCoords){
+        const x=c*tileSize;
+        const y=r*tileSize;
+        foods.add(new Block(null,x+14,y+14,4,4));
+    }
+
+    for(const {r,c} of parsed.cherrySmall){
+        cherries.add(makeCherry(smallCherryImage,c,r,50));
+    }
+
+    for(const {r,c} of parsed.cherryBig){
+        cherries.add(makeCherry(bigCherryImage,c,r,100));
+    }
+
+    for(const {r,c,key} of parsed.ghostSpawns){
+        const x=c*tileSize;
+        const y=r*tileSize;
+
+        const img=
+            key==="b"? blueGhostImage:
+            key==="r"? redGhostImage:
+            key==="p"? pinkGhostImage:
+            orangeGhostImage;
+        
+        ghosts.add(new Block(img,x,y,tileSize,tileSize));
+    }
+
+    // for(let r=0;r<rowCount;r++){
+    //     for(let c=0;c<columnCount;c++){
+    //         const row=tileMap[r];
+    //         const tileMapChar=row[c];
+
+    //         const x=c*tileSize;
+    //         const y=r*tileSize;
+
+    //         if(tileMapChar==='X'){
+    //             const wall = new Block(wallImage,x,y,tileSize,tileSize);
+    //             walls.add(wall);
+    //         }
+    //         else if(tileMapChar==='b'){
+    //             const ghost =new Block(blueGhostImage,x,y,tileSize,tileSize);
+    //             ghosts.add(ghost);
+    //         }
+    //         else if(tileMapChar==='r'){
+    //             const ghost=new Block(redGhostImage,x,y,tileSize,tileSize);
+    //             ghosts.add(ghost);
+    //         }
+    //         else if(tileMapChar==='p'){
+    //             const ghost=new Block(pinkGhostImage,x,y,tileSize,tileSize);
+    //             ghosts.add(ghost);
+    //         }
+    //         else if(tileMapChar==='o'){
+    //             const ghost=new Block(orangeGhostImage,x,y,tileSize,tileSize);
+    //             ghosts.add(ghost);
+    //         }
+    //         else if(tileMapChar==='P'){
+    //             pacman=new Block(pacmanRightImage,x,y,tileSize,tileSize);
+    //         }
+    //         else if(tileMapChar==='s'){
+    //             cherries.add(makeCherry(smallCherryImage,c,r,50));
+    //         }
+    //         else if(tileMapChar==='l'){
+    //             cherries.add(makeCherry(bigCherryImage,c,r,100));
+    //         }
+    //         else if(tileMapChar===' '){
+    //             const food=new Block(null,x+14,y+14,4,4);
+    //             foods.add(food);
+    //         }
+    //     }
+    // }
 
     if(!pacman){
-        pacman=new Block(null,0,0,0,0);
+        pacman=new Block(pacmanRightImage,0,0,tileSize,tileSize);
     }
+    pacman.x=parsed.pacmanSpawn.c*tileSize;
+    pacman.y=parsed.pacmanSpawn.r*tileSize;
+    pacman.startX=pacman.x;
+    pacman.startY=pacman.y;
+    pacman.width=tileSize;
+    pacman.height=tileSize;
+    pacman.image=pacmanRightImage;
 
     // placeCherriesAndRemoveDots();
 
@@ -738,6 +841,8 @@ function loadMap(){
     pacman.velocityX=0;
     pacman.velocityY=0;
     pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+
+    setOccupiedFromEntities();
 
 }
 
@@ -823,21 +928,33 @@ function makePickup(image,col,row){
     return new Block(image,x+offset,y+offset,size,size);
 }
 
-function isTileBlocked(col,row){
-    const x=col*tileSize;
-    const y=row*tileSize;
-
-    for(let w of walls.values()){
-        if(w.x===x && w.y===y) return true;
-    }
-
-    if( pacman && pacman.x===x && pacman.y===y) return true;
-
-    for(let g of ghosts.values()){
-        if(g.x===x && g.y===y) return true;
-    }
-    return false;
+function isWallTile(col,row){
+    if(!wallGrid) return false;
+    if(row <0 || row>=rowCount || col<0 || col>=columnCount) return false;
+    return wallGrid[row][col]===true;
 }
+
+function isTileBlocked(col,row){
+    if(isWallTile(col,row)) return true;
+
+    return occupiedTiles.has(tileKey(col,row));
+}
+
+// function isTileBlocked(col,row){
+//     const x=col*tileSize;
+//     const y=row*tileSize;
+
+//     for(let w of walls.values()){
+//         if(w.x===x && w.y===y) return true;
+//     }
+
+//     if( pacman && pacman.x===x && pacman.y===y) return true;
+
+//     for(let g of ghosts.values()){
+//         if(g.x===x && g.y===y) return true;
+//     }
+//     return false;
+// }
 
 
 function randomEmptyTile(){
@@ -858,48 +975,94 @@ function randomEmptyTile(){
     return null;
 }
 
-function update(){
-    if(!gameStarted) return;
-    if(gameOver){
+let rafId=0;
+let lastTs=0;
+let accMs=0;
+const FIXED_STEP_MS=50;
+
+function startLoop(){
+    stopLoop();
+    lastTs=0;
+    accMs=0;
+    rafId=requestAnimationFrame(frame);
+}
+
+function stopLoop(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId=0;
+    lastTs=0;
+    accMs=0;
+}
+
+function frame(ts){
+    if(!gameStarted || gameOver){
+        rafId=0;
         return;
     }
-    move();
+
+    if(!lastTs) lastTs=ts;
+    const dt=ts-lastTs;
+    lastTs=ts;
+
+    accMs+=Math.min(dt,250);
+
+    while(accMs>=FIXED_STEP_MS){
+        tick();
+        accMs-=FIXED_STEP_MS;
+        if(gameOver) break;
+    }
+
     draw();
-    setTimeout(update,50);
+    rafId=requestAnimationFrame(frame);
 }
+
+function tick(){
+    move();
+}
+
+// function update(){
+//     if(!gameStarted) return;
+//     if(gameOver){
+//         return;
+//     }
+//     move();
+//     draw();
+//     setTimeout(update,50);
+// }
 
 function draw(){
     context.clearRect(0,0,board.width,board.height);
+
+    for(const wall of walls){
+        context.drawImage(wall.image,wall.x,wall.y,wall.width,wall.height);
+    }
+
+    context.fillStyle="white";
+    for(const food of foods){
+        context.fillRect(food.x,food.y,food.width,food.height);
+    }
+
+    for(const cherry of cherries){
+        context.drawImage(cherry.image,cherry.x,cherry.y,cherry.width,cherry.height);
+    }
+
+    for(const heart of hearts){
+        context.drawImage(heart.image,heart.x,heart.y,heart.width,heart.height);
+    }
+
+    for(const shield of shields){
+        context.drawImage(shield.image,shield.x,shield.y,shield.width,shield.height);
+    }
+
+    for(const ghost of ghosts){
+        context.drawImage(ghost.image,ghost.x,ghost.y,ghost.width,ghost.height);
+    }
+
     if(pacman && pacman.image){
         context.drawImage(pacman.image,pacman.x,pacman.y,pacman.width,pacman.height);
     }
 
 
-    for(let ghost of ghosts.values()){
-        context.drawImage(ghost.image,ghost.x,ghost.y,ghost.width,ghost.height);
-    }
-
-    for(let wall of walls.values()){
-        context.drawImage(wall.image,wall.x,wall.y,wall.width,wall.height);
-    }
-
-    for(let cherry of cherries.values()){
-        context.drawImage(cherry.image,cherry.x,cherry.y,cherry.width,cherry.height);
-    }
-
-    for(let heart of hearts.values()){
-        context.drawImage(heart.image,heart.x,heart.y,heart.width,heart.height);
-    }
-
-    for(let shield of shields.values()){
-        context.drawImage(shield.image,shield.x,shield.y,shield.width,shield.height);
-    }
-
-    context.fillStyle="white";
-
-    for(let food of foods.values()){
-        context.fillRect(food.x,food.y,food.width,food.height);
-    }
 
     context.fillStyle="white";
     context.font="14px sans-serif";
@@ -915,7 +1078,7 @@ function draw(){
     // }
     // else{
     // }
-    context.fillText("x"+String(lives)+ " "+String(score)+ " "+shieldText,tileSize/2,tileSize/2)
+    context.fillText("x"+String(lives)+ " "+String(score)+ " " +shieldText,tileSize/2,tileSize/2)
 }
 
 function wrapEntity(entity){
@@ -938,7 +1101,7 @@ function canMoveInDirection(block,direction){
         height:block.height
     };
 
-    for(let wall of walls.values()){
+    for(const wall of walls){
         if(collision(test,wall)) return false;
     }
     return true;
@@ -1012,9 +1175,7 @@ function shieldSpawn(){
 function activateShield(){
     shieldActive=true;
     shieldTimer=Date.now()+SHIELD_POWER_DURATION;
-
     shieldSpawnedAt=0;
-
 }
 
 function move(){
@@ -1035,8 +1196,8 @@ function move(){
 
     wrapEntity(pacman);
 
-    for(let wall of walls.values()){
-        if(pacman && collision(pacman,wall)){
+    for(const wall of walls){
+        if(collision(pacman,wall)){
             pacman.x-=pacman.velocityX;
             pacman.y-=pacman.velocityY;
 
@@ -1048,16 +1209,20 @@ function move(){
 
     updatePacmanAnimation();
 
-    for(let ghost of ghosts.values()){
-        if(pacman && collision(ghost,pacman)){
+    setOccupiedFromEntities();
+
+    for(const ghost of ghosts){
+        if(collision(ghost,pacman)){
             if(!shieldActive){
                 lives-=1;
                 if(lives==0){
                     gameOver=true;
                     showGameOverPopup();
+                    stopLoop();
                     return;
                 }
                 resetPositions();
+                setOccupiedFromEntities();
                 return;
             }
         }
@@ -1069,8 +1234,8 @@ function move(){
         ghost.x+=ghost.velocityX;
         ghost.y+=ghost.velocityY;
 
-        for(let wall of walls.values()){
-            if(pacman && collision(ghost,wall) || ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
+        for(const wall of walls){
+            if(collision(ghost,wall) || ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
                 ghost.x-=ghost.velocityX;
                 ghost.y-=ghost.velocityY;
                 const newDirection=directions[Math.floor(Math.random()*4)];
@@ -1080,8 +1245,8 @@ function move(){
     }
 
     let foodEaten=null;
-    for(let food of foods.values()){
-        if(pacman && collision(pacman,food)){
+    for(const food of foods){
+        if(collision(pacman,food)){
             foodEaten=food;
             score+=10;
             break;
@@ -1090,8 +1255,8 @@ function move(){
     if(foodEaten) foods.delete(foodEaten);
 
     let cherryEaten=null;
-    for(let cherry of cherries.values()){
-        if(pacman && collision(pacman,cherry)){
+    for(const cherry of cherries){
+        if(collision(pacman,cherry)){
             cherryEaten=cherry;
             score+=cherry.points;
             break;
@@ -1101,8 +1266,8 @@ function move(){
 
 
     let heartEaten=null;
-    for(let heart of hearts.values()){
-        if(pacman && collision(pacman,heart)){
+    for(const heart of hearts){
+        if(collision(pacman,heart)){
             heartEaten=heart;
             lives=Math.min(3,lives+1);
             break;
@@ -1115,8 +1280,8 @@ function move(){
         
 
     let shieldEaten=null;
-    for(let shield of shields.values()){
-        if(pacman && collision(pacman,shield)){
+    for(const shield of shields){
+        if(collision(pacman,shield)){
             shieldEaten=shield;
             break;
         }
@@ -1131,6 +1296,7 @@ function move(){
         loadMap();
         resetPositions();
     }
+    setOccupiedFromEntities();
 }
 
 function movePacman(e){
@@ -1197,7 +1363,7 @@ function resetPositions(){
     pacmanAnimTick=0;
     pacman.image=getPacmanIdleImageByDirection(pacman.direction);
 
-    for(let ghost of ghosts.values()){
+    for(const ghost of ghosts){
         ghost.reset();
         const newDirection=directions[Math.floor(Math.random()*4)];
         ghost.updateDirection(newDirection);
@@ -1231,8 +1397,8 @@ class Block{
         this.x+=this.velocityX;
         this.y+=this.velocityY;
 
-        for(let wall of walls.values()){
-            if(pacman && collision(this,wall)){
+        for(const wall of walls){
+            if(collision(this,wall)){
                 this.x-=this.velocityX;
                 this.y-=this.velocityY;
 
