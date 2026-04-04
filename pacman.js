@@ -133,6 +133,9 @@ const tileMap4=[
 const tileMaps=[tileMap1,tileMap2,tileMap3,tileMap4];
 let lastMapIndex=-1;
 
+let currentWallIndex=0;
+let lastWallIndex=-1;
+
 const walls=new Set();
 const foods=new Set();
 const ghosts=new Set();
@@ -199,12 +202,16 @@ const SETTINGS_KEY="pacman_settings";
 const gameSettings={
     mapMode:"random",
     mapIndex:0,
+
+    wallMode:"random",
     wallIndex:0,
 };
 
 let tempSettings={
     mapMode:"random",
     mapIndex:0,
+
+    wallMode:"random",
     wallIndex:0,
 };
 
@@ -220,6 +227,9 @@ function loadSettings(){
         if(Number.isInteger(s.mapIndex) && s.mapIndex>=0 && s.mapIndex<tileMaps.length){
             gameSettings.mapIndex=s.mapIndex;
         }
+        if(s && (s.wallMode==="random" || s.wallMode==="fixed")){
+            gameSettings.wallMode=s.wallMode;
+        }
         if(Number.isInteger(s.wallIndex) && s.wallIndex>=0 && s.wallIndex<4){
             gameSettings.wallIndex=s.wallIndex;
         }
@@ -234,7 +244,8 @@ function saveSettingsToStorage(){
 
 function applyWallSelection(){
     if(wallImages.length>=4){
-        wallImage=wallImages[gameSettings.wallIndex] || wallImages[0];
+        const idx=Number.isInteger(currentWallIndex) ?currentWallIndex:gameSettings.wallIndex;
+        wallImage=wallImages[idx] || wallImages[0];
     }
 }
 
@@ -260,6 +271,7 @@ function showSettings(){
     tempSettings={
         mapMode:gameSettings.mapMode,
         mapIndex:gameSettings.mapIndex,
+        wallMode:gameSettings.wallMode,
         wallIndex:gameSettings.wallIndex,
     };
 
@@ -288,9 +300,13 @@ function renderSettings(){
         setSelected(tile,selected);
     }
 
+    const wallRandomTile=document.getElementById("wallRandomTile");
+    setSelected(wallRandomTile,tempSettings.wallMode==="random");
+
     for(let w=0;w<4;w++){
         const tile = document.getElementById(`wallTile${w}`);
-        setSelected(tile,tempSettings.wallIndex===w);
+        const selected=(tempSettings.wallMode==="fixed" && tempSettings.wallIndex===w);
+        setSelected(tile,selected);
     }
 
     renderMapPreviews();
@@ -299,7 +315,10 @@ function renderSettings(){
 function saveSettings(){
     gameSettings.mapMode=tempSettings.mapMode;
     gameSettings.mapIndex=tempSettings.mapIndex;
+    gameSettings.wallMode=tempSettings.wallMode;
     gameSettings.wallIndex=tempSettings.wallIndex;
+
+    currentWallIndex=gameSettings.wallIndex;
 
     applyWallSelection();
     saveSettingsToStorage();
@@ -325,6 +344,26 @@ function selectMapBySettings(){
 
     lastMapIndex=idx;
     tileMap=tileMaps[idx];
+}
+
+function selectWallBySettings(){
+    if(wallImages.length===0) return;
+
+    if(gameSettings.wallMode==="fixed"){
+        currentWallIndex=gameSettings.wallIndex;
+        lastWallIndex=currentWallIndex;
+        return;
+    }
+
+    let idx=Math.floor(Math.random()*wallImages.length);
+    if(wallImages.length>1){
+        while(idx===lastWallIndex){
+            idx=Math.floor(Math.random()*wallImages.length);
+        }
+    }
+
+    currentWallIndex=idx;
+    lastWallIndex=idx;
 }
 
 const parsedMaps=tileMaps.map(parseTileMap);
@@ -413,6 +452,9 @@ window.onload=function(){
     context=board.getContext("2d");
 
     loadSettings();
+
+    currentWallIndex=gameSettings.wallIndex;
+
     loadImages();
 
     buildSettingsUi();
@@ -586,6 +628,7 @@ function startGame(){
     shieldStartScore=0;
 
     selectMapBySettings();
+    selectWallBySettings();
     loadMap();
 
     for(const ghost of ghosts){
@@ -618,6 +661,7 @@ function restartGame(){
     hearts.clear();
 
     selectMapBySettings();
+    selectWallBySettings();
     loadMap();
     resetPositions();
 
@@ -1100,6 +1144,7 @@ function move(){
 
     if(foods.size==0 && cherries.size==0){
         selectMapBySettings();
+        selectWallBySettings();
         loadMap();
         resetPositions();
     }
@@ -1255,7 +1300,9 @@ function buildSettingsUi(){
         mapStrip.appendChild(btn);
     }
 
-    wallStrip.innerHTML="";
+    for(const child of Array.from(wallStrip.children)){
+        if(child.id!=="wallRandomTile") child.remove();
+    }
 
     for(let w=0;w<4;w++){
         const btn=document.createElement("button");
@@ -1276,6 +1323,7 @@ function buildSettingsUi(){
         btn.appendChild(label);
 
         btn.addEventListener("click",()=>{
+            tempSettings.wallMode="fixed";
             tempSettings.wallIndex=w;
             renderSettings();
         });
@@ -1291,11 +1339,21 @@ function buildSettingsUi(){
         });
     }
 
+    const wallRandomTile=document.getElementById("wallRandomTile");
+    if(wallRandomTile){
+        wallRandomTile.addEventListener("click",()=>{
+            tempSettings.wallMode="random";
+            renderSettings();
+        });
+    }
+
     renderSettings();
 }
 
 function renderMapPreviews(){
-    const wallImg=wallImages[tempSettings.wallIndex] || wallImages[0];
+
+    const previewWallIndex=(tempSettings.wallMode==="fixed") ? tempSettings.wallIndex:0;
+    const wallImg=wallImages[previewWallIndex] || wallImages[0];
 
     for(let i=0;i<tileMaps.length;i++){
         const tile=document.getElementById(`mapTile${i}`);
@@ -1375,7 +1433,8 @@ function openMapZoom(mapIndex){
     overlay.classList.remove("hidden");
     zoomCellSize=24;
 
-    const wallImg=wallImages[tempSettings.wallIndex] || wallImages[0];
+    const previewWallIndex=(tempSettings.wallMode==="fixed") ? tempSettings.wallIndex:0;
+    const wallImg=wallImages[previewWallIndex] || wallImages[0];
     drawMapPreview(canvas,tileMaps[mapIndex],wallImg,zoomCellSize);
 }
 
