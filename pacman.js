@@ -1406,7 +1406,7 @@ function movePacman(e){
 
     if(pacman && pacman.velocityX===0 && pacman.velocitY===0 && nextPacmanDirection){
         pacman.direction=nextPacmanDirection;
-        pacman.updatedVelocity();
+        pacman.updateVelocity();
     }
 }
 
@@ -1689,3 +1689,93 @@ function confirmZoomSelection(){
     renderSettings();
     closeMapZoom();
 }
+
+
+(function(){
+    const DOT_SPEED_PX_PER_SEC=80;
+    const MOUTH_FPS=8;
+
+    const PAC_FRAMES=[
+        "./pacmanFullRight.png",
+        "./pacmanRight.png",
+        "./pacmanClose.png",
+    ];
+
+    let raf=0;
+    let lastTs=0;
+
+    let mouthTimer=0;
+    let mouthIndex=0;
+
+    let dotsOffset=0;
+    let dotSpacing=0;
+
+    function isLobbyVisible(){
+        const lobby=document.getElementById("lobbyOverlay");
+        return !!(lobby && !lobby.classList.contains("hidden"));
+    }
+
+    function computeDotSpacing(dotsEl){
+        const spans=dotsEl.querySelectorAll("span");
+        if(spans.length>=2){
+            const a=spans[0].offsetLeft;
+            const b=spans[1].offsetLeft;
+            return Math.max(10,b-a);
+        }
+        return 16;
+    }
+
+    function stop(){
+        if(raf) cancelAnimationFrame(raf);
+        raf=0;
+        lastTs=0;
+    }
+
+    function tick(ts){
+        if(!isLobbyVisible()){
+            stop();
+            return;
+        }
+
+        raf=requestAnimationFrame(tick);
+
+        if(!lastTs) lastTs=ts;
+        const dt=Math.min(0.05,(ts-lastTs)/1000);
+        lastTs=ts;
+
+        const  pac=document.getElementById("lobbyPacman");
+        const dots=document.querySelector(".chase-dots");
+        if(!pac || !dots) return;
+
+        mouthTimer+=dt;
+        const mouthStep=1/MOUTH_FPS;
+        if(mouthTimer>=mouthStep){
+            mouthTimer-=mouthStep;
+            mouthIndex=(mouthIndex+1)%PAC_FRAMES.length;
+            pac.src=PAC_FRAMES[mouthIndex];
+        }
+
+        if(!dotSpacing) dotSpacing=computeDotSpacing(dots);
+
+        dotsOffset+=DOT_SPEED_PX_PER_SEC*dt;
+        if(dotsOffset>=dotSpacing) dotsOffset-=dotSpacing;
+        dots.style.transform=`translateX(${-dotsOffset}px)`;
+    }
+    function start(){
+        if(raf) return;
+        const dots=document.querySelector(".chase-dots");
+        if(dots) dotSpacing=computeDotSpacing(dots);
+        raf=requestAnimationFrame(tick);
+    };
+
+    window.addEventListener("load",()=>{
+        if(isLobbyVisible()) start();
+        const lobby=document.getElementById("lobbyOverlay");
+        if(!lobby) return;
+        const obs=new MutationObserver(()=>{
+            if(isLobbyVisible()) start();
+            else stop();
+        });
+        obs.observe(lobby,{attributes:true,attributeFilter:["class"]});
+    }); 
+})();
