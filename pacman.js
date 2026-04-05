@@ -82,7 +82,7 @@ const tileMap2=[
     "XXXXXXXXXXXXXXXXXXX"
 ];
 
-const tileMap3 = [
+const tileMap3=[
     "XXXXXXXXXXXXXXXXXXX",
     "X s      X      s X",
     "X XXXXX  X  XXXXX X",
@@ -130,7 +130,103 @@ const tileMap4=[
     "XXXXXXXXXXXXXXXXXXX"
 ]
 
-const tileMaps=[tileMap1,tileMap2,tileMap3,tileMap4];
+const tileMap5=[
+    "XXXXXXXXXXXXXXXXXXX",
+    "X s             s X",
+    "X XXX XXXXXXX XXX X",
+    "X   X   X   X   X X",
+    "XXX X X X X X X X X",
+    "X   X X   X   X X X",
+    "X XXX XXXXXXX XXX X",
+    "X   X     r     X X",
+    "X XXXXXXXXXXXXX X X",
+    "O l   X obp X   l O",
+    "X XXXXXXXXXXXXX X X",
+    "X X     o       X X",
+    "X XXX XXXXXXX XXX X",
+    "X X   X   X   X   X",
+    "X X X X X X X XXX X",
+    "X   X   X   X   X X",
+    "X XXX XXXXXXX XXX X",
+    "X   X     P     X X",
+    "X XXX XXXXXXX XXX X",
+    "X s             s X",
+    "XXXXXXXXXXXXXXXXXXX",
+];
+
+const tileMap6=[
+    "XXXXXXXXXXXXXXXXXXX",
+    "X s             s X",
+    "X XXX XXX XXX XXX X",
+    "X   X   X X   X   X",
+    "XXX XXX X X XXX XXX",
+    "X       X X       X",
+    "X XXX XXXXXXX XXX X",
+    "X X   r   X   b X X",
+    "X XXX XXX X XXX XXX",
+    "O l   X  op  X   l O",
+    "X XXX XXX X XXX XXX",
+    "X X   p   X   o X X",
+    "X XXX XXXXXXX XXX X",
+    "X       X X       X",
+    "XXX XXX X X XXX XXX",
+    "X   X   X X   X   X",
+    "X XXX XXX XXX XXX X",
+    "X s      P      s X",
+    "X XXX XXXXXXX XXX X",
+    "X               s X",
+    "XXXXXXXXXXXXXXXXXXX",
+];
+
+const tileMap7=[
+    "XXXXXXXXXXXXXXXXXXX",
+    "X s             s X",
+    "X XXX XXXXXXX XXX X",
+    "X X   X     X   X X",
+    "X X XXX XXX XXX X X",
+    "X X   X   X   X X X",
+    "X XXX XXX X XXX X X",
+    "X   X   r   X   X X",
+    "XXX XXXXX XXXXX XXX",
+    "O l   X obp X   l O",
+    "XXX XXXXX XXXXX XXX",
+    "X X   X   o X   X X",
+    "X X XXX XXX XXX X X",
+    "X X   X   X   X X X",
+    "X X XXX XXX XXX X X",
+    "X X   X     X   X X",
+    "X XXX XXXXXXX XXX X",
+    "X   s    P    s   X",
+    "X XXX XXXXXXX XXX X",
+    "X s             s X",
+    "XXXXXXXXXXXXXXXXXXX"
+];
+
+const tileMap8=[
+    "XXXXXXXXXXXXXXXXXXX",
+    "X s      X      s X",
+    "X XXX XXX XXX XXX X",
+    "X   X   X   X   X X",
+    "XXX X XXX XXX X XXX",
+    "X   X   X X   X   X",
+    "X XXX XXX XXX XXX X",
+    "X X     r   b     X",
+    "X XXX XXXXXX XXX XX",
+    "O l             l O",
+    "XX XXX XXXXXX X XXX",
+    "X     p   o     X X",
+    "X XXX XXX XXX XXX X",
+    "X   X   X X   X   X",
+    "XXX X XXX XXX X XXX",
+    "X X   X   P   X   X",
+    "X XXX XXX XXX XXX X",
+    "X s      X      s X",
+    "X XXX XXXXXXX XXX X",
+    "X               s X",
+    "XXXXXXXXXXXXXXXXXXX",
+];
+
+const tileMaps = [tileMap1, tileMap2, tileMap3, tileMap4, tileMap5, tileMap6, tileMap7, tileMap8];
 let lastMapIndex=-1;
 
 let currentWallIndex=0;
@@ -174,6 +270,55 @@ function setOccupiedFromEntities(){
 }
 
 const directions=['U','D','L','R'];
+
+const GHOST_TURN_PROB_AT_INTERSECTION=0.35;
+const GHOST_ALLOW_REVERSE_AT_INTERSECTION=false;
+
+function isAlignedtoTile(block){
+    return (block.x % tileSize === 0) && (block.y % tileSize===0)
+}
+
+function oppositeDirection(dir){
+    if(dir==='U') return "D";
+    if(dir==='D') return "U";
+    if(dir==='L') return "R";
+    return "L";
+}
+
+function availableDirectionsForGhost(ghost){
+    const options=[];
+    for(const d of directions){
+        if(canMoveInDirection(ghost,d)){
+            options.push(d);
+        }
+    }
+    return options;
+}
+
+function pickRandomDirection(opts){
+    return opts[Math.floor(Math.random()*opts.length)];
+}
+
+function maybeTurnGhostAtIntersection(ghost){
+    if(!isAlignedtoTile(ghost)) return;
+
+    const options=availableDirectionsForGhost(ghost);
+
+    if(options.length<=2) return;
+
+    if(Math.random()>GHOST_TURN_PROB_AT_INTERSECTION) return;
+
+    let pool=options;
+
+    if(!GHOST_ALLOW_REVERSE_AT_INTERSECTION){
+        const back=oppositeDirection(ghost.direction);
+        const filtered=options.filter(d=>d!==back);
+        if(filtered.length>0) pool=filtered;
+    }
+
+    ghost.updateDirection(pickRandomDirection(pool));
+}
+
 let score=0;
 let lives=3;
 let gameStarted=false;
@@ -1082,16 +1227,39 @@ function move(){
             ghost.updateDirection('U');
         }
 
+        maybeTurnGhostAtIntersection(ghost);
+
         ghost.x+=ghost.velocityX;
         ghost.y+=ghost.velocityY;
 
+
+        let hit=false;
         for(const wall of walls){
-            if(collision(ghost,wall) || ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
-                ghost.x-=ghost.velocityX;
-                ghost.y-=ghost.velocityY;
-                const newDirection=directions[Math.floor(Math.random()*4)];
-                ghost.updateDirection(newDirection);
+            if(collision(ghost,wall)){
+                hit =true;
+                break;
             }
+        }
+        if(ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
+            hit =true;
+        }
+        // Direction=directions[Math.floor(Math.random()*4)];
+        // ghost.updateDirection(newDirection);const new
+        
+        if(hit){
+            ghost.x-=ghost.velocityX;
+            ghost.y-=ghost.velocityY;
+
+            const options=availableDirectionsForGhost(ghost);
+            if(options.length>0){
+                let pool=options;
+                const back=oppositeDirection(ghost.direction);
+                const filtered=options.filter(d=>d!==back);
+                if(filtered.length>0) pool=filtered;
+
+                ghost.updateDirection(pickRandomDirection(pool));
+            }
+            
         }
     }
 
@@ -1197,8 +1365,8 @@ function resetPositions(){
 
     for(const ghost of ghosts){
         ghost.reset();
-        const newDirection=directions[Math.floor(Math.random()*4)];
-        ghost.updateDirection(newDirection);
+        // Direction=directions[Math.floor(Math.random()*4)];
+        // ghost.updateDirection(newDirection);const new
     }
 }
 

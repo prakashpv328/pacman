@@ -454,6 +454,21 @@ kbd{
     box-sizing:border-box;
 }
 
+.wall-tile-thumb-random{
+    height:70px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+        radial-gradient(800px 240px at 50% 10%, rgba(0,120,255,0.22), transparent 55%),
+        linear-gradient(180deg ,rgba(18,18,28,0.92) 0% ,rgba(0,0,0,0.92));
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.10);
+    box-sizing:border-box;
+}
+
+
+
 .random-badge{
     /* height:100px; */
     font-size:12px;
