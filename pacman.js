@@ -360,6 +360,62 @@ let tempSettings={
     wallIndex:0,
 };
 
+function isTunnelTile(col,row){
+    if(!tileMap) return false;
+    if(row<0 || row>=rowCount || col<0 || col>=columnCount) return false;
+    return tileMap[row][col]==='O';
+}
+
+function handlePacmanTunnel(){
+    if(!pacman) return;
+
+    if(pacman.tunnelCooldown && pacman.tunnelCooldown>0){
+        pacman.tunnelCooldown--;
+        return;
+    }
+
+    if(!isAlignedtoTile(pacman)) return;
+
+    const t=pixelToTile(pacman.x,pacman.y);
+    if(!isTunnelTile(t.col,t.row)) return;
+
+    const leftEdge=0;
+    const rightEdge=columnCount-1;
+
+    if(t.col===leftEdge){
+        pacman.x=rightEdge*tileSize;
+        pacman.y=t.row*tileSize;
+        pacman.tunnelCooldown=6;
+    }
+    else if(t.col===rightEdge){
+        pacman.x=leftEdge*tileSize;
+        pacman.y=t.row*tileSize;
+        pacman.tunnelCooldown=6;
+    }
+}
+
+function pacmanInTunnelNow(){
+    if(!pacman) return false;
+    if(!isAlignedtoTile(pacman)) return false;
+
+    const t=pixelToTile(pacman.x,pacman.y);
+    return isTunnelTile(t.col,t.row);
+}
+
+function handleGhostTunnelRespawn(ghost){
+    if(!ghost) return false;
+    if(!isAlignedtoTile(ghost)) return false;
+
+    const t=pixelToTile(ghost.x,ghost.y);
+    if(!isTunnelTile(t.col,t.row)) return false;
+
+    ghost.x=ghost.startX;
+    ghost.y=ghost.startY;
+
+    ghost.updateDirection(directions[Math.floor(Math.random()*4)]);
+    return true;
+}
+
 function loadSettings(){
     try{
         const raw=localStorage.getItem(SETTINGS_KEY);
@@ -659,7 +715,7 @@ window.onload=function(){
             closeMapZoom();
         }
     });
-}
+};
 
 function handleUiKeys(e){
     if(isMapZoomVisible()){
@@ -982,13 +1038,11 @@ function isWallTile(col,row){
 
 function isTileBlocked(col,row){
     if(isWallTile(col,row)) return true;
-
     return occupiedTiles.has(tileKey(col,row));
 }
 
 function randomEmptyTile(){
     let tries=0;
-
 
     while(tries<5000){
         tries++;
@@ -1182,7 +1236,9 @@ function move(){
     heartSpawn();
     shieldSpawn();
 
-    if(nextPacmanDirection && canMoveInDirection(pacman,nextPacmanDirection)){
+    const pacTunnelBlocked=(pacman.tunnelCooldown && pacman.tunnelCooldown>0) || pacmanInTunnelNow();
+
+    if(!pacTunnelBlocked && nextPacmanDirection && canMoveInDirection(pacman,nextPacmanDirection)){
         pacman.direction=nextPacmanDirection;
         pacman.updateVelocity();
     }
@@ -1190,7 +1246,7 @@ function move(){
     pacman.x+=pacman.velocityX;
     pacman.y+=pacman.velocityY;
 
-    wrapEntity(pacman);
+    handlePacmanTunnel();
 
     for(const wall of walls){
         if(collision(pacman,wall)){
@@ -1231,6 +1287,10 @@ function move(){
 
         ghost.x+=ghost.velocityX;
         ghost.y+=ghost.velocityY;
+
+        if(handleGhostTunnelRespawn(ghost)){
+            continue;
+        }
 
 
         let hit=false;
@@ -1343,6 +1403,11 @@ function movePacman(e){
     else if(e.code==='ArrowLeft' || e.code==="KeyA"){
         nextPacmanDirection='L';
     }
+
+    if(pacman && pacman.velocityX===0 && pacman.velocitY===0 && nextPacmanDirection){
+        pacman.direction=nextPacmanDirection;
+        pacman.updatedVelocity();
+    }
 }
 
 function collision(a,b){
@@ -1387,6 +1452,8 @@ class Block{
         this.velocityY=0;
 
         this.points=0;
+
+        this.tunnelCooldown=0;
     }
 
     updateDirection(direction){
@@ -1407,6 +1474,9 @@ class Block{
                 return;
             }
         }
+
+        this.x-=this.velocityX;
+        this.y-=this.velocityY;
     }
 
     updateVelocity(){
@@ -1619,4 +1689,3 @@ function confirmZoomSelection(){
     renderSettings();
     closeMapZoom();
 }
-
