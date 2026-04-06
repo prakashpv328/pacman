@@ -285,6 +285,42 @@ function oppositeDirection(dir){
     return "L";
 }
 
+function ensureGhostHasValidDirection(ghost){
+    const options=availableDirectionsForGhost(ghost);
+    if(options.length===0){
+        ghost.velocityX=0;
+        ghost.velocityY=0;
+        return;
+    }
+
+    if(options.includes(ghost.direction)){
+        ghost.updateDirection(ghost.direction);
+        return;
+    }
+
+    const back=oppositeDirection(ghost.direction);
+    let pool=options.filter(d=>d!==back);
+    if(pool.length===0) pool =options;
+
+    ghost.updateDirection(pickRandomDirection(pool));
+}
+
+function respawnGhostAtStartAndMove(ghost){
+    ghost.x=ghost.startX;
+    ghost.y=ghost.startY;
+
+    ghost.x=Math.round(ghost.x/tileSize)*tileSize;
+    ghost.y=Math.round(ghost.y/tileSize)*tileSize;
+
+    ensureGhostHasValidDirection(ghost);
+
+    if(ghost.velocitX===0 && ghost.velocityY===0){
+        ghost.direction="R";
+        ghost.updateVelocity();
+        ensureGhostHasValidDirection(ghost);
+    }
+}
+
 function availableDirectionsForGhost(ghost){
     const options=[];
     for(const d of directions){
@@ -409,10 +445,7 @@ function handleGhostTunnelRespawn(ghost){
     const t=pixelToTile(ghost.x,ghost.y);
     if(!isTunnelTile(t.col,t.row)) return false;
 
-    ghost.x=ghost.startX;
-    ghost.y=ghost.startY;
-
-    ghost.updateDirection(directions[Math.floor(Math.random()*4)]);
+    respawnGhostAtStartAndMove(ghost);
     return true;
 }
 
@@ -717,13 +750,45 @@ window.onload=function(){
     });
 };
 
+function zoomPrevMap(){
+    if(zoomSelectedMapIndex<0) zoomSelectedMapIndex=0;
+    zoomSelectedMapIndex=(zoomSelectedMapIndex-1+tileMaps.length)%tileMaps.length;
+    openMapZoom(zoomSelectedMapIndex);
+}
+
+function zoomNextMap(){
+    if(zoomSelectedMapIndex<0) zoomSelectedMapIndex=0;
+    zoomSelectedMapIndex=(zoomSelectedMapIndex+1)%tileMaps.length;
+    openMapZoom(zoomSelectedMapIndex);
+}
+
 function handleUiKeys(e){
     if(isMapZoomVisible()){
         if(e.code==="Enter"){
             e.preventDefault();
             confirmZoomSelection();
+            return;
+        }
+
+        if(e.code==="Escape"){
+            e.preventDefault();
+            closeMapZoom();
+            return;
+        }
+
+        if(e.code==="ArrowLeft"){
+            e.preventDefault();
+            zoomPrevMap();
+            return;
+        }
+
+        if(e.code==="ArrowRight"){
+            e.preventDefault();
+            zoomNextMap();
+            return;
         }
         return;
+
     }
 
 
@@ -1003,6 +1068,10 @@ function loadMap(){
     pacman.velocityX=0;
     pacman.velocityY=0;
     pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+
+    for(const ghost of ghosts){
+        respawnGhostAtStartAndMove(ghost);
+    }
 
     setOccupiedFromEntities();
 
@@ -1404,7 +1473,7 @@ function movePacman(e){
         nextPacmanDirection='L';
     }
 
-    if(pacman && pacman.velocityX===0 && pacman.velocitY===0 && nextPacmanDirection){
+    if(pacman && pacman.velocityX===0 && pacman.velocityY===0 && nextPacmanDirection){
         pacman.direction=nextPacmanDirection;
         pacman.updateVelocity();
     }
@@ -1414,7 +1483,7 @@ function collision(a,b){
     return a.x<b.x+b.width &&
             a.x+a.width>b.x &&
             a.y<b.y+b.height &&
-            a.y+a.height>b.y
+            a.y+a.height>b.y;
 };
 
 function resetPositions(){
@@ -1430,6 +1499,7 @@ function resetPositions(){
 
     for(const ghost of ghosts){
         ghost.reset();
+        respawnGhostAtStartAndMove(ghost);
         // Direction=directions[Math.floor(Math.random()*4)];
         // ghost.updateDirection(newDirection);const new
     }
@@ -1664,6 +1734,12 @@ function isMapZoomVisible(){
 
 function openMapZoom(mapIndex){
     zoomSelectedMapIndex=mapIndex;
+
+    const titleEl=document.getElementById("mapZoomTitle");
+    if(titleEl){
+        titleEl.textContent=`Map ${mapIndex+1}/${tileMaps.length}`;
+    }
+
     const overlay=document.getElementById("mapZoomOverlay");
     const canvas=document.getElementById("mapZoomCanvas");
     if(!overlay || !canvas) return;

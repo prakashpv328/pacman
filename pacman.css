@@ -502,8 +502,8 @@ kbd{
 
 .card-zoom{
     width:min(640px,96vw);
-    padding:14px;
-    width: 95%;
+    padding:15px 15px;
+    width: 90%;
 }
 
 .zoom-body{
@@ -511,6 +511,16 @@ kbd{
     border-radius:12px;
     border:1px solid rgba(255,255,255,0.14);
     padding:10px;
+}
+
+.zoom-title{
+    color:#ffd54a;
+    font-weight:900;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    text-align:center;
+    margin:0 0 10px 0;
+    font-size:14px;
 }
 
 .zoom-canvas{
