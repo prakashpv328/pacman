@@ -1902,3 +1902,95 @@ function confirmZoomSelection(){
         obs.observe(lobby,{attributes:true,attributeFilter:["class"]});
     }); 
 })();
+
+(function (){
+    const FPS=3;
+    const STEP_SECONDS=1/FPS;
+
+    const DIRS=['R','U','L','D'];
+
+    function dirForGhost(ghostIndex,step){
+        const baseIndex=(ghostIndex-1);
+        const dirIndex=(0-step-baseIndex)%4;
+        return DIRS[(dirIndex+4)%4];
+    }
+
+    function srcFor(color,dir){
+        if(dir==="R") return `./${color}_right_ghost.png`;
+        if(dir==="L") return `./${color}_left_ghost.png`;
+        if(dir==="U") return `./${color}_up_ghost.png`;
+        if(dir==="D") return `./${color}_down_ghost.png`;
+    }
+
+    function isLobbyVisible(){
+        const lobby=document.getElementById("lobbyOverlay");
+        return !!(lobby && !lobby.classList.contains("hidden"));
+    }
+
+    let raf=0;
+    let lastTs=0;
+    let acc=0;
+    let step=0;
+
+    function stop(){
+        if(raf) cancelAnimationFrame(raf);
+        raf=0;
+        lastTs=0;
+        acc=0;
+    }
+
+    function tick(ts){
+        if(!isLobbyVisible()){
+            stop();
+            return;
+        }
+
+        raf=requestAnimationFrame(tick);
+
+        if(!lastTs) lastTs=ts;
+        const dt=Math.min(0.05,(ts-lastTs)/1000);
+        lastTs=ts;
+
+        acc+=dt;
+        if(acc<STEP_SECONDS) return;
+        acc-=STEP_SECONDS;
+
+        const g1=document.getElementById("lobbyGhost1");
+        const g2=document.getElementById("lobbyGhost2");
+        const g3=document.getElementById("lobbyGhost3");
+        const g4=document.getElementById("lobbyGhost4");
+
+        if(!g1 || !g2 || !g3 || !g4) return;
+
+        const d1=dirForGhost(1,step);
+        const d2=dirForGhost(2,step);
+        const d3=dirForGhost(3,step);
+        const d4=dirForGhost(4,step);
+
+        g1.src=srcFor("red",d1);
+        g2.src=srcFor("pink",d2);
+        g3.src=srcFor("blue",d3);
+        g4.src=srcFor("orange",d4);
+
+        step++;
+    }
+
+    function start(){
+        if(raf) return;
+        raf=requestAnimationFrame(tick);
+    }
+
+    window.addEventListener("load",()=>{
+        if(isLobbyVisible()) start();
+
+        const lobby=document.getElementById("lobbyOverlay");
+
+        if(!lobby) return;
+
+        const obs=new MutationObserver(()=>{
+            if(isLobbyVisible()) start();
+            else stop();
+        })
+        obs.observe(lobby,{attributes:true,attributeFilter:["class"]});
+    })
+})();
