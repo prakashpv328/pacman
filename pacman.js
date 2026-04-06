@@ -11,6 +11,8 @@ let orangeGhostImage;
 let pinkGhostImage;
 let redGhostImage;
 
+let redGhostImgs,pinkGhostImgs,orangeGhostImgs,blueGhostImgs;
+
 let pacmanUpImage;
 let pacmanDownImage;
 let pacmanLeftImage;
@@ -314,7 +316,7 @@ function respawnGhostAtStartAndMove(ghost){
 
     ensureGhostHasValidDirection(ghost);
 
-    if(ghost.velocitX===0 && ghost.velocityY===0){
+    if(ghost.velocityX===0 && ghost.velocityY===0){
         ghost.direction="R";
         ghost.updateVelocity();
         ensureGhostHasValidDirection(ghost);
@@ -642,7 +644,7 @@ function getPacmanFullImageByDirection(dir){
     return pacmanFullRightImage;
 }
 
-function getPacmanOpenImageByDirection(dir){
+function getPacmanOpenImageByDirection(_dir){
     return pacmanCloseImage;
 }
 
@@ -671,6 +673,21 @@ function updatePacmanAnimation(){
     else{
         pacman.image=getPacmanOpenImageByDirection(pacman.direction);
     }
+}
+
+function loadDirGhostImages(prefix){
+    const mk=(src)=>{
+        const i=new Image();
+        i.src=src;
+        return i;
+    };
+
+    return {
+        U:mk(`./${prefix}_up_ghost.png`),
+        D:mk(`./${prefix}_down_ghost.png`),
+        L:mk(`./${prefix}_left_ghost.png`),
+        R:mk(`./${prefix}_right_ghost.png`),
+    };
 }
 
 window.onload=function(){
@@ -751,12 +768,14 @@ window.onload=function(){
 };
 
 function zoomPrevMap(){
+    if(tileMaps.length===0) return;
     if(zoomSelectedMapIndex<0) zoomSelectedMapIndex=0;
     zoomSelectedMapIndex=(zoomSelectedMapIndex-1+tileMaps.length)%tileMaps.length;
     openMapZoom(zoomSelectedMapIndex);
 }
 
 function zoomNextMap(){
+    if(tileMaps.length===0) return;
     if(zoomSelectedMapIndex<0) zoomSelectedMapIndex=0;
     zoomSelectedMapIndex=(zoomSelectedMapIndex+1)%tileMaps.length;
     openMapZoom(zoomSelectedMapIndex);
@@ -952,6 +971,12 @@ function loadImages(){
     redGhostImage=new Image();
     redGhostImage.src="./redGhost.png";
 
+    redGhostImgs=loadDirGhostImages("red");
+    pinkGhostImgs=loadDirGhostImages("pink");
+    blueGhostImgs=loadDirGhostImages("blue");
+    orangeGhostImgs=loadDirGhostImages("orange");
+
+
     pacmanFullUpImage=new Image();
     pacmanFullUpImage.src="./pacmanFullUp.png";
     pacmanFullDownImage=new Image();
@@ -1031,13 +1056,17 @@ function loadMap(){
         const x=c*tileSize;
         const y=r*tileSize;
 
-        const img=
-            key==="b"? blueGhostImage:
-            key==="r"? redGhostImage:
-            key==="p"? pinkGhostImage:
-            orangeGhostImage;
+        const imgs=
+            key==="b"? blueGhostImgs:
+            key==="r"? redGhostImgs:
+            key==="p"? pinkGhostImgs:
+            orangeGhostImgs;
         
-        ghosts.add(new Block(img,x,y,tileSize,tileSize));
+        const g=new Block(imgs.R,x,y,tileSize,tileSize);
+        g.dirImages=imgs;
+        g.direction="R";
+        g.updateVelocity();
+        ghosts.add(g);
     }
 
     if(!pacman){
@@ -1049,8 +1078,13 @@ function loadMap(){
     pacman.startY=pacman.y;
     pacman.width=tileSize;
     pacman.height=tileSize;
-    pacman.image=pacmanRightImage;
 
+    pacman.direction='R';
+    pacman.velocityX=0;
+    pacman.velocityY=0;
+    pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+
+    pacman.tunnelCooldown=0;
     nextPacmanDirection=null;
 
     heartSpawnedAt=0;
@@ -1064,10 +1098,7 @@ function loadMap(){
 
     pacmanAnimIndex=0;
     pacmanAnimTick=0;
-    pacman.direction='R';
-    pacman.velocityX=0;
-    pacman.velocityY=0;
-    pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+    
 
     for(const ghost of ghosts){
         respawnGhostAtStartAndMove(ghost);
@@ -1524,12 +1555,20 @@ class Block{
         this.points=0;
 
         this.tunnelCooldown=0;
+
+        this.dirImages=null;
     }
 
     updateDirection(direction){
         const prevDirection=this.direction;
+        const prevImage=this.image;
+
         this.direction=direction;
         this.updateVelocity();
+
+        if(this.dirImages){
+            this.image=this.dirImages[this.direction] || this.image;
+        }
 
         this.x+=this.velocityX;
         this.y+=this.velocityY;
@@ -1676,6 +1715,7 @@ function renderMapPreviews(){
     if(isMapZoomVisible() && zoomSelectedMapIndex>=0){
         const zc=document.getElementById("mapZoomCanvas");
         if(zc) drawMapPreview(zc,tileMaps[zoomSelectedMapIndex],wallImg,zoomCellSize);
+        updateZoomTitle();
     }
 }
 
@@ -1732,13 +1772,18 @@ function isMapZoomVisible(){
     return !!(el && !el.classList.contains("hidden"));
 }
 
+function updateZoomTitle(){
+    const title=document.getElementById("mapZoomTitle");
+    if(!title) return;
+    if(zoomSelectedMapIndex<0){
+        title.textContent="";
+        return;
+    }
+    title.textContent=`Map ${zoomSelectedMapIndex+1}/${tileMaps.length}`;
+}
+
 function openMapZoom(mapIndex){
     zoomSelectedMapIndex=mapIndex;
-
-    const titleEl=document.getElementById("mapZoomTitle");
-    if(titleEl){
-        titleEl.textContent=`Map ${mapIndex+1}/${tileMaps.length}`;
-    }
 
     const overlay=document.getElementById("mapZoomOverlay");
     const canvas=document.getElementById("mapZoomCanvas");
@@ -1750,12 +1795,14 @@ function openMapZoom(mapIndex){
     const previewWallIndex=(tempSettings.wallMode==="fixed") ? tempSettings.wallIndex:0;
     const wallImg=wallImages[previewWallIndex] || wallImages[0];
     drawMapPreview(canvas,tileMaps[mapIndex],wallImg,zoomCellSize);
+    updateZoomTitle();
 }
 
 function closeMapZoom(){
     const overlay=document.getElementById("mapZoomOverlay");
     if(overlay) overlay.classList.add("hidden");
     zoomSelectedMapIndex=-1;
+    updateZoomTitle();
 }
 
 function confirmZoomSelection(){
