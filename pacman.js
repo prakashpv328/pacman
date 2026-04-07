@@ -383,11 +383,14 @@ const SHIELD_THRESHOLD=250;
 const SHIELD_POWER_DURATION=5000;
 const SHIELD_SPAWN_LIFETIME=10000;
 
+
 let shieldActive=false;
 let shieldTimer=0;
 let shieldSpawnedAt=0;
 let shieldStartScore=0;
 
+const HEART_THRESHOLD=150;
+let heartStartScore=0;
 
 const HEART_SPAWN_LIFETIME=10000;
 let heartSpawnedAt=0;
@@ -978,6 +981,8 @@ function startGame(){
     lives=3;
     score=0;
 
+    heartStartScore=0;
+
     hearts.clear();
     shields.clear();
     heartSpawnedAt=0;
@@ -1010,6 +1015,9 @@ function restartGame(){
 
     lives=3;
     score=0;
+
+    heartStartScore=score;
+
     gameStarted=true;
     gameOver=false;
 
@@ -1177,6 +1185,7 @@ function loadMap(){
     shieldTimer=0;
 
     shieldStartScore=score;
+    heartStartScore=score;
 
     pacmanAnimIndex=0;
     pacmanAnimTick=0;
@@ -1409,6 +1418,8 @@ function heartSpawn(){
 
     if(hearts.size>0) return;
 
+    if(score-heartStartScore <HEART_THRESHOLD) return;
+
     if(Math.random()>0.02) return;
 
     const pos=randomEmptyTile();
@@ -1416,6 +1427,8 @@ function heartSpawn(){
 
     hearts.add(makePickup(heartImage,pos.col,pos.row));
     heartSpawnedAt=Date.now();
+
+    heartStartScore=score;
 }
 
 function shieldSpawn(){
@@ -1578,6 +1591,8 @@ function move(){
     if(heartEaten){
         hearts.delete(heartEaten);
         heartSpawnedAt=0;
+
+        heartStartScore=score;
     } 
         
 
