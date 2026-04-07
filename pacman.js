@@ -2,9 +2,18 @@ let board;
 const rowCount=21;
 const columnCount=19;
 const tileSize=32;
+
+const HUD_HEIGHT=40;
+const HUD_PADDING=10;
+
 const boardWidth=columnCount*tileSize;
-const boardHeight=rowCount*tileSize;
+const boardHeight=rowCount*tileSize+HUD_HEIGHT;
 let context;
+
+
+let hudScoreImg;
+let hudLifeImg;
+let hudShieldImg;
 
 let blueGhostImage;
 let orangeGhostImage;
@@ -1009,6 +1018,9 @@ function loadImages(){
     heartImage=new Image();
     heartImage.src="./life.png";
 
+    hudLifeImg=heartImage;
+    hudShieldImg=shieldImage;
+
     applyWallSelection();
 }
 
@@ -1203,50 +1215,91 @@ function tick(){
     move();
 }
 
+function drawHud(){
+    // Header background
+    context.fillStyle = "rgba(0,0,0,0.85)";
+    context.fillRect(0, 0, boardWidth, HUD_HEIGHT);
+
+    // bottom separator line
+    context.fillStyle = "rgba(255,255,255,0.18)";
+    context.fillRect(0, HUD_HEIGHT - 1, boardWidth, 1);
+
+    context.font = "16px sans-serif";
+    context.textBaseline = "middle";
+    context.fillStyle = "#fff";
+
+    const cy = HUD_HEIGHT / 2;
+    const iconSize = 22;
+
+    // ---- LEFT: lives + (shield only if active) ----
+    let x = HUD_PADDING;
+
+    // lives icon + text
+    if (hudLifeImg && hudLifeImg.complete) {
+        context.drawImage(hudLifeImg, x, cy - iconSize/2, iconSize, iconSize);
+        x += iconSize + 8;
+    }
+    context.fillText(`x${lives}`, x, cy);
+    x += context.measureText(`x${lives}`).width + 16;
+
+    // shield: ONLY when active
+    if (shieldActive) {
+        const msLeft = Math.max(0, shieldTimer - Date.now());
+        const shieldText = `${(msLeft / 1000).toFixed(1)}s`;
+
+        if (hudShieldImg && hudShieldImg.complete) {
+            context.drawImage(hudShieldImg, x, cy - iconSize/2, iconSize, iconSize);
+            x += iconSize + 8;
+        }
+        context.fillText(shieldText, x, cy);
+    }
+
+    // ---- CENTER: score (points) ----
+    const scoreText = String(score);
+    const scoreW = context.measureText(scoreText).width;
+    context.fillText(scoreText, (boardWidth - scoreW) / 2, cy);
+
+    // ---- RIGHT: leave empty for future UI ----
+    // (intentionally nothing drawn here)
+}
+
 function draw(){
     context.clearRect(0,0,board.width,board.height);
 
+    // 1) HUD header
+    drawHud();
+
+    // 2) draw the game world below the header
+    const oy = HUD_HEIGHT;
+
     for(const wall of walls){
-        context.drawImage(wall.image,wall.x,wall.y,wall.width,wall.height);
+        context.drawImage(wall.image, wall.x, wall.y + oy, wall.width, wall.height);
     }
 
     context.fillStyle="white";
     for(const food of foods){
-        context.fillRect(food.x,food.y,food.width,food.height);
+        context.fillRect(food.x, food.y + oy, food.width, food.height);
     }
 
     for(const cherry of cherries){
-        context.drawImage(cherry.image,cherry.x,cherry.y,cherry.width,cherry.height);
+        context.drawImage(cherry.image, cherry.x, cherry.y + oy, cherry.width, cherry.height);
     }
 
     for(const heart of hearts){
-        context.drawImage(heart.image,heart.x,heart.y,heart.width,heart.height);
+        context.drawImage(heart.image, heart.x, heart.y + oy, heart.width, heart.height);
     }
 
     for(const shield of shields){
-        context.drawImage(shield.image,shield.x,shield.y,shield.width,shield.height);
+        context.drawImage(shield.image, shield.x, shield.y + oy, shield.width, shield.height);
     }
 
     for(const ghost of ghosts){
-        context.drawImage(ghost.image,ghost.x,ghost.y,ghost.width,ghost.height);
+        context.drawImage(ghost.image, ghost.x, ghost.y + oy, ghost.width, ghost.height);
     }
 
     if(pacman && pacman.image){
-        context.drawImage(pacman.image,pacman.x,pacman.y,pacman.width,pacman.height);
+        context.drawImage(pacman.image, pacman.x, pacman.y + oy, pacman.width, pacman.height);
     }
-
-
-
-    context.fillStyle="white";
-    context.font="14px sans-serif";
-
-    let shieldText="";
-    if(shieldActive){
-        const msLeft=Math.max(0,shieldTimer-Date.now());
-        shieldText="Shield: "+(msLeft/1000).toFixed(1)+"s";
-    }
-
-    context.fillText("x"+String(lives)+ " "+String(score)+ " " +shieldText,tileSize/2,tileSize/2)
 }
 
 function wrapEntity(entity){
