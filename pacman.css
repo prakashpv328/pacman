@@ -564,4 +564,30 @@ kbd{
     font-weight:800;
     margin-top:4px;
 }
+.pause-btn{
+  position:absolute;
+  top:5px;
+  right:10px;
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.18);
+  background:rgba(0,0,0,0.35);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+  z-index:30;
+}
 
+.pause-btn:hover{
+  background:rgba(255,255,255,0.08);
+}
+
+.pause-btn img{
+  width:22px;
+  height:22px;
+  pointer-events:none;
+  user-select:none;
+}

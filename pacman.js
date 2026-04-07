@@ -10,6 +10,12 @@ const boardWidth=columnCount*tileSize;
 const boardHeight=rowCount*tileSize+HUD_HEIGHT;
 let context;
 
+let isPaused = false;
+
+const PAUSE_KEY = "Space";   // Space bar
+const PAUSE_BTN_PLAY_SRC = "./play.png";
+const PAUSE_BTN_PAUSE_SRC = "./pause.png";
+
 
 let hudScoreImg;
 let hudLifeImg;
@@ -483,6 +489,42 @@ function loadSettings(){
     catch(_e){}
 }
 
+function setPauseButtonVisible(visible){
+    const btn = document.getElementById("pauseBtn");
+    if(!btn) return;
+    btn.classList.toggle("hidden", !visible);
+}
+
+function renderPauseIcon(){
+    const icon = document.getElementById("pauseBtnIcon");
+    if(!icon) return;
+    icon.src = isPaused ? PAUSE_BTN_PLAY_SRC : PAUSE_BTN_PAUSE_SRC;
+}
+
+function pauseGame(){
+    if(!gameStarted || gameOver) return;
+    if(isPaused) return;
+    isPaused = true;
+    renderPauseIcon();
+    stopLoop();
+}
+
+function resumeGame(){
+    if(!gameStarted || gameOver) return;
+    if(!isPaused) return;
+    isPaused = false;
+    renderPauseIcon();
+    startLoop();
+}
+
+function togglePause(){
+    if(!gameStarted || gameOver) return;
+    if(isPaused) resumeGame();
+    else pauseGame();
+}
+
+
+
 function saveSettingsToStorage(){
     localStorage.setItem(SETTINGS_KEY,JSON.stringify(gameSettings));
 }
@@ -774,6 +816,13 @@ window.onload=function(){
             closeMapZoom();
         }
     });
+
+    const pauseBtn = document.getElementById("pauseBtn");
+    if(pauseBtn){
+        pauseBtn.addEventListener("click", () => togglePause());
+    }
+    renderPauseIcon();
+    setPauseButtonVisible(false);
 };
 
 function zoomPrevMap(){
@@ -791,6 +840,14 @@ function zoomNextMap(){
 }
 
 function handleUiKeys(e){
+
+    // Pause/Play via Space
+    if(e.code === PAUSE_KEY){
+        e.preventDefault();
+        togglePause();
+        return;
+    }
+
     if(isMapZoomVisible()){
         if(e.code==="Enter"){
             e.preventDefault();
@@ -868,6 +925,7 @@ function showGameOverPopup(){
     const scoreEl=document.getElementById("finalScoreText");
     if(scoreEl) scoreEl.textContent=String(score);
     if(overlay) overlay.classList.remove("hidden");
+    setPauseButtonVisible(false);
 }
 
 function hideGameOverPopup(){
@@ -880,6 +938,10 @@ function goToLobby(){
     hideGameOverPopup();
     hideSettings();
     closeMapZoom();
+
+    isPaused = false;
+    renderPauseIcon();
+    setPauseButtonVisible(false);
 
     gameStarted=false;
     gameOver=false;
@@ -905,6 +967,10 @@ function startGame(){
     hideLobby();
     hideSettings();
     closeMapZoom();
+
+    isPaused = false;
+    renderPauseIcon();
+    setPauseButtonVisible(true);
 
     gameStarted=true;
     gameOver=false;
@@ -937,6 +1003,10 @@ function restartGame(){
     hideGameOverPopup();
     hideSettings();
     closeMapZoom();
+
+    isPaused = false;
+    renderPauseIcon();
+    setPauseButtonVisible(false);
 
     lives=3;
     score=0;
