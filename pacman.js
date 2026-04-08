@@ -12,10 +12,25 @@ let context;
 
 let isPaused = false;
 
-const PAUSE_KEY = "Space";   // Space bar
+const PAUSE_KEY = "Space";
 const PAUSE_BTN_PLAY_SRC = "./play.png";
 const PAUSE_BTN_PAUSE_SRC = "./pause.png";
 
+const GHOST_RESPAWN_FREEZE_MS=2000;
+const GHOST_RESPAWN_BLINK_INTERVAL_MS=160;
+
+let bonusGhostBlueImg;
+let bonusGhostWhiteImg;
+
+const FRIGHTENED_DURATION_MS=7000;
+const FRIGHTENED_BLINK_MS=2000;
+const FRIGHTENED_BLINK_INTERVAL_MS=200;
+
+const GHOST_EAT_SCORES = [200, 400, 800, 1600];
+ 
+let frightenedActive = false;
+let frightenedUntil = 0;
+let frightenedChainCount = 0;
 
 let hudScoreImg;
 let hudLifeImg;
@@ -465,8 +480,121 @@ function handleGhostTunnelRespawn(ghost){
     const t=pixelToTile(ghost.x,ghost.y);
     if(!isTunnelTile(t.col,t.row)) return false;
 
-    respawnGhostAtStartAndMove(ghost);
+    startGhostRespawnBlink(ghost);
     return true;
+}
+
+function setGhostNormalImage(ghost){
+	if(!ghost.dirImages) return;
+	ghost.image = ghost.dirImages[ghost.direction] || ghost.image;
+}
+
+function getFrightenedGhostImage(){
+	const msLeft = frightenedUntil - Date.now();
+
+	if(msLeft <= FRIGHTENED_BLINK_MS){
+		return bonusGhostWhiteImg;
+	}
+	return bonusGhostBlueImg;
+}
+
+function setGhostFrightenedImage(ghost){
+	const img = getFrightenedGhostImage();
+	if(img && img.complete) ghost.image = img;
+}
+ 
+function startFrightenedMode(){
+	frightenedActive = true;
+	frightenedUntil = Date.now() + FRIGHTENED_DURATION_MS;
+	frightenedChainCount = 0;
+
+	for(const g of ghosts){
+		const rev = oppositeDirection(g.direction);
+		if(canMoveInDirection(g, rev)){
+			g.updateDirection(rev);
+		}
+
+		setGhostFrightenedImage(g);
+	}
+}
+
+function updateFrightenedMode(){
+	if(!frightenedActive) return;
+ 
+	if(Date.now() >= frightenedUntil){
+		frightenedActive = false;
+		frightenedUntil = 0;
+		frightenedChainCount = 0;
+ 
+		for(const g of ghosts){
+			if(g.isEaten){
+				startGhostRespawnBlink(g);
+				continue;
+			}
+			setGhostNormalImage(g);
+			g.updateVelocity();
+		}
+		return;
+	}
+ 
+	for(const g of ghosts){
+		if(g.isEaten || g.isRespawning) continue;
+		setGhostFrightenedImage(g);
+	}
+}
+
+function eatGhost(ghost){
+	const idx = Math.min(frightenedChainCount, GHOST_EAT_SCORES.length - 1);
+	score += GHOST_EAT_SCORES[idx];
+	frightenedChainCount++;
+ 
+	ghost.isEaten = true;
+	ghost.velocityX = 0;
+	ghost.velocityY = 0;
+	ghost.x = -tileSize * 2;
+	ghost.y = -tileSize * 2;
+}
+
+function startGhostRespawnBlink(ghost){
+	ghost.x = Math.round(ghost.startX / tileSize) * tileSize;
+	ghost.y = Math.round(ghost.startY / tileSize) * tileSize;
+ 
+	ghost.isEaten = false;
+	ghost.isRespawning = true;
+	ghost.respawnUntil = Date.now() + GHOST_RESPAWN_FREEZE_MS;
+ 
+	ghost.velocityX = 0;
+	ghost.velocityY = 0;
+ 
+	if(bonusGhostWhiteImg && bonusGhostWhiteImg.complete){
+		ghost.image = bonusGhostWhiteImg;
+	}
+}
+
+function updateGhostRespawnBlink(ghost){
+	if(!ghost.isRespawning) return false;
+ 
+	const msLeft = ghost.respawnUntil - Date.now();
+	if(msLeft <= 0){
+		ghost.isRespawning = false;
+		ghost.respawnUntil = 0;
+ 
+		ensureGhostHasValidDirection(ghost);
+		setGhostNormalImage(ghost);
+		return false;
+	}
+
+	ghost.velocityX = 0;
+	ghost.velocityY = 0;
+ 
+	const phase = Math.floor(Date.now() / GHOST_RESPAWN_BLINK_INTERVAL_MS) % 2;
+	if(phase === 0 && bonusGhostWhiteImg && bonusGhostWhiteImg.complete){
+		ghost.image = bonusGhostWhiteImg;
+	}else{
+		setGhostNormalImage(ghost);
+	}
+ 
+	return true;
 }
 
 function loadSettings(){
@@ -844,7 +972,6 @@ function zoomNextMap(){
 
 function handleUiKeys(e){
 
-    // Pause/Play via Space
     if(e.code === PAUSE_KEY){
         e.preventDefault();
         togglePause();
@@ -1050,13 +1177,13 @@ function loadImages(){
     }
 
     blueGhostImage=new Image();
-    blueGhostImage.src="./blueGhost.png";
+    blueGhostImage.src="./blue_right_ghost.png";
     orangeGhostImage=new Image();
-    orangeGhostImage.src="./orangeGhost.png";
+    orangeGhostImage.src="./orange_right_ghost.png";
     pinkGhostImage=new Image();
-    pinkGhostImage.src="./pinkGhost.png";
+    pinkGhostImage.src="./pink_right_ghost.png";
     redGhostImage=new Image();
-    redGhostImage.src="./redGhost.png";
+    redGhostImage.src="./red_right_ghost.png";
 
     redGhostImgs=loadDirGhostImages("red");
     pinkGhostImgs=loadDirGhostImages("pink");
@@ -1095,6 +1222,12 @@ function loadImages(){
 
     heartImage=new Image();
     heartImage.src="./life.png";
+
+    bonusGhostBlueImg = new Image();
+	bonusGhostBlueImg.src = "./bonus_ghost_blue.png";
+ 
+	bonusGhostWhiteImg = new Image();
+	bonusGhostWhiteImg.src = "./bonus_ghost_white.png";
 
     hudLifeImg=heartImage;
     hudShieldImg=shieldImage;
@@ -1153,10 +1286,14 @@ function loadMap(){
             orangeGhostImgs;
         
         const g=new Block(imgs.R,x,y,tileSize,tileSize);
-        g.dirImages=imgs;
-        g.direction="R";
-        g.updateVelocity();
-        ghosts.add(g);
+		g.dirImages=imgs;
+		g.direction="R";
+		g.isGhost=true;
+		g.isEaten=false;
+		g.isRespawning=false;
+		g.respawnUntil=0;
+		g.updateVelocity();
+		ghosts.add(g);
     }
 
     if(!pacman){
@@ -1291,15 +1428,14 @@ function frame(ts){
 }
 
 function tick(){
+    updateFrightenedMode();
     move();
 }
 
 function drawHud(){
-    // Header background
     context.fillStyle = "rgba(0,0,0,0.85)";
     context.fillRect(0, 0, boardWidth, HUD_HEIGHT);
 
-    // bottom separator line
     context.fillStyle = "rgba(255,255,255,0.18)";
     context.fillRect(0, HUD_HEIGHT - 1, boardWidth, 1);
 
@@ -1310,10 +1446,8 @@ function drawHud(){
     const cy = HUD_HEIGHT / 2;
     const iconSize = 22;
 
-    // ---- LEFT: lives + (shield only if active) ----
     let x = HUD_PADDING;
 
-    // lives icon + text
     if (hudLifeImg && hudLifeImg.complete) {
         context.drawImage(hudLifeImg, x, cy - iconSize/2, iconSize, iconSize);
         x += iconSize + 8;
@@ -1321,7 +1455,6 @@ function drawHud(){
     context.fillText(`x${lives}`, x, cy);
     x += context.measureText(`x${lives}`).width + 16;
 
-    // shield: ONLY when active
     if (shieldActive) {
         const msLeft = Math.max(0, shieldTimer - Date.now());
         const shieldText = `${(msLeft / 1000).toFixed(1)}s`;
@@ -1333,22 +1466,17 @@ function drawHud(){
         context.fillText(shieldText, x, cy);
     }
 
-    // ---- CENTER: score (points) ----
     const scoreText = String(score);
     const scoreW = context.measureText(scoreText).width;
     context.fillText(scoreText, (boardWidth - scoreW) / 2, cy);
 
-    // ---- RIGHT: leave empty for future UI ----
-    // (intentionally nothing drawn here)
 }
 
 function draw(){
     context.clearRect(0,0,board.width,board.height);
 
-    // 1) HUD header
     drawHud();
 
-    // 2) draw the game world below the header
     const oy = HUD_HEIGHT;
 
     for(const wall of walls){
@@ -1373,6 +1501,7 @@ function draw(){
     }
 
     for(const ghost of ghosts){
+        if(ghost.isEaten) continue;
         context.drawImage(ghost.image, ghost.x, ghost.y + oy, ghost.width, ghost.height);
     }
 
@@ -1500,64 +1629,71 @@ function move(){
     setOccupiedFromEntities();
 
     for(const ghost of ghosts){
-        if(collision(ghost,pacman)){
-            if(!shieldActive){
-                lives-=1;
-                if(lives==0){
-                    gameOver=true;
-                    showGameOverPopup();
-                    stopLoop();
-                    return;
-                }
-                resetPositions();
-                setOccupiedFromEntities();
-                return;
-            }
-        }
-
-        if(ghost.y==tileSize*9 && ghost.direction !='U' && ghost.direction!='D'){
-            ghost.updateDirection('U');
-        }
-
-        maybeTurnGhostAtIntersection(ghost);
-
-        ghost.x+=ghost.velocityX;
-        ghost.y+=ghost.velocityY;
-
-        if(handleGhostTunnelRespawn(ghost)){
-            continue;
-        }
-
-
-        let hit=false;
-        for(const wall of walls){
-            if(collision(ghost,wall)){
-                hit =true;
-                break;
-            }
-        }
-        if(ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
-            hit =true;
-        }
-        // Direction=directions[Math.floor(Math.random()*4)];
-        // ghost.updateDirection(newDirection);const new
-        
-        if(hit){
-            ghost.x-=ghost.velocityX;
-            ghost.y-=ghost.velocityY;
-
-            const options=availableDirectionsForGhost(ghost);
-            if(options.length>0){
-                let pool=options;
-                const back=oppositeDirection(ghost.direction);
-                const filtered=options.filter(d=>d!==back);
-                if(filtered.length>0) pool=filtered;
-
-                ghost.updateDirection(pickRandomDirection(pool));
-            }
-            
-        }
-    }
+		if(ghost.isEaten) continue;
+ 
+		if(updateGhostRespawnBlink(ghost)){
+			continue;
+		}
+ 
+		if(collision(ghost, pacman)){
+			if(frightenedActive){
+				eatGhost(ghost);
+				continue;
+			}
+ 
+			if(!shieldActive){
+				lives -= 1;
+				if(lives === 0){
+					gameOver = true;
+					showGameOverPopup();
+					stopLoop();
+					return;
+				}
+				resetPositions();
+				setOccupiedFromEntities();
+				return;
+			}
+		}
+ 
+		if(ghost.y==tileSize*9 && ghost.direction!='U' && ghost.direction!='D'){
+			ghost.updateDirection('U');
+		}
+ 
+		maybeTurnGhostAtIntersection(ghost);
+ 
+		ghost.x += ghost.velocityX;
+		ghost.y += ghost.velocityY;
+ 
+		if(handleGhostTunnelRespawn(ghost)){
+			continue;
+		}
+ 
+		let hit=false;
+		for(const wall of walls){
+			if(collision(ghost,wall)){
+				hit=true;
+				break;
+			}
+		}
+		if(ghost.x<=0 || ghost.x+ghost.width>=boardWidth){
+			hit=true;
+		}
+ 
+		if(hit){
+			ghost.x -= ghost.velocityX;
+			ghost.y -= ghost.velocityY;
+ 
+			const options=availableDirectionsForGhost(ghost);
+			if(options.length>0){
+				let pool=options;
+				const back=oppositeDirection(ghost.direction);
+				const filtered=options.filter(d=>d!==back);
+				if(filtered.length>0) pool=filtered;
+ 
+				ghost.updateDirection(pickRandomDirection(pool));
+			}
+		}
+	}
 
     let foodEaten=null;
     for(const food of foods){
@@ -1577,7 +1713,13 @@ function move(){
             break;
         }
     }
-    if(cherryEaten) cherries.delete(cherryEaten);
+    if(cherryEaten){
+		cherries.delete(cherryEaten);
+ 
+		if(cherryEaten.points===100){
+			startFrightenedMode();
+		}
+	}
 
 
     let heartEaten=null;
@@ -1667,11 +1809,12 @@ function resetPositions(){
     pacman.image=getPacmanIdleImageByDirection(pacman.direction);
 
     for(const ghost of ghosts){
-        ghost.reset();
-        respawnGhostAtStartAndMove(ghost);
-        // Direction=directions[Math.floor(Math.random()*4)];
-        // ghost.updateDirection(newDirection);const new
-    }
+		ghost.isEaten = false;
+		ghost.isRespawning = false;
+		ghost.respawnUntil = 0;
+		ghost.reset();
+		respawnGhostAtStartAndMove(ghost);
+	}
 }
 
 
@@ -1695,6 +1838,11 @@ class Block{
         this.tunnelCooldown=0;
 
         this.dirImages=null;
+
+        this.isGhost = false;
+		this.isEaten = false;
+		this.isRespawning = false;
+		this.respawnUntil = 0;
     }
 
     updateDirection(direction){
@@ -1712,37 +1860,41 @@ class Block{
         this.y+=this.velocityY;
 
         for(const wall of walls){
-            if(collision(this,wall)){
-                this.x-=this.velocityX;
-                this.y-=this.velocityY;
-
-                this.direction=prevDirection;
-                this.updateVelocity();
-                return;
-            }
-        }
+			if(collision(this,wall)){
+				this.x-=this.velocityX;
+				this.y-=this.velocityY;
+ 
+				this.direction=prevDirection;
+				this.updateVelocity();
+				this.image=prevImage;
+				return;
+			}
+		}
 
         this.x-=this.velocityX;
         this.y-=this.velocityY;
     }
 
     updateVelocity(){
+        const baseSpeed = tileSize/4;
+		const speed = (this.isGhost && frightenedActive) ? (baseSpeed/2) : baseSpeed;
+
         if(this.direction=='U'){
-            this.velocityX=0;
-            this.velocityY=-tileSize/4;
-        }
-        else if(this.direction=='D'){
-            this.velocityX=0;
-            this.velocityY=tileSize/4;
-        }
-        else if(this.direction=='L'){
-            this.velocityX=-tileSize/4;
-            this.velocityY=0;
-        }
-        else if(this.direction=='R'){
-            this.velocityX=tileSize/4;
-            this.velocityY=0;
-        }
+			this.velocityX=0;
+			this.velocityY=-speed;
+		}
+		else if(this.direction=='D'){
+			this.velocityX=0;
+			this.velocityY=speed;
+		}
+		else if(this.direction=='L'){
+			this.velocityX=-speed;
+			this.velocityY=0;
+		}
+		else if(this.direction=='R'){
+			this.velocityX=speed;
+			this.velocityY=0;
+		}
     }
 
     reset(){
