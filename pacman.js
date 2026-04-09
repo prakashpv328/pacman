@@ -15,13 +15,16 @@ let context;
 let isPaused = false;
 
 const PAUSE_KEY = "Space";
-const PAUSE_BTN_PLAY_SRC = "./play.png";
-const PAUSE_BTN_PAUSE_SRC = "./pause.png";
+const PAUSE_BTN_PLAY_SRC ="./play.png";
+const PAUSE_BTN_PAUSE_SRC ="./pause.png";
 
 let pauseBtnPlayImage;
 let pauseBtnPauseImage;
 let pauseButtonVisible = false;
 let pauseButtonRect = {x:0,y:0,width:0,height:0};
+
+const GAME_START_DELAY_MS=4000;
+const RESPAWN_DELAY_MS=3000;
 
 const GHOST_RESPAWN_FREEZE_MS=2000;
 const GHOST_RESPAWN_BLINK_INTERVAL_MS=160;
@@ -33,11 +36,11 @@ const FRIGHTENED_DURATION_MS=7000;
 const FRIGHTENED_BLINK_MS=2000;
 const FRIGHTENED_BLINK_INTERVAL_MS=200;
 
-const GHOST_EAT_SCORES = [200, 400, 800, 1600];
+const GHOST_EAT_SCORES = [200,400,600,800];
  
-let frightenedActive = false;
-let frightenedUntil = 0;
-let frightenedChainCount = 0;
+let frightenedActive=false;
+let frightenedUntil=0;
+let frightenedChainCount=0;
 
 let hudScoreImg;
 let hudLifeImg;
@@ -72,6 +75,218 @@ let heartImage;
 let shieldImage;
 
 let tileMap=[];
+
+const SFX = {
+	start:      null,
+	eat:        null,
+	fruit:      null,
+	frightened: null,
+	eatGhost:   null,
+	fail:       null,
+	ghostMove:  null,
+};
+
+let eatSfxAudioContext = null;
+let eatSfxArrayBuffer = null;
+let eatSfxBuffer = null;
+let eatSfxCurrentSource = null;
+let eatSfxGainNode = null;
+let eatSfxReady = false;
+let eatSfxPlaying = false;
+let eatSfxGestureUnlocked = false;
+
+function trimLeadingSilence(buffer, threshold=0.012, minLeadSeconds=0.06){
+	if(!buffer || buffer.numberOfChannels===0) return buffer;
+
+	const sampleRate   = buffer.sampleRate;
+	const leadSamples  = Math.floor(minLeadSeconds * sampleRate);
+	const channelCount = buffer.numberOfChannels;
+	const channelData  = [];
+	let firstNonSilent = buffer.length;
+
+	for(let ci=0; ci<channelCount; ci++){
+		const data = buffer.getChannelData(ci);
+		channelData.push(data);
+		for(let si=0; si<buffer.length; si++){
+			if(Math.abs(data[si]) > threshold){
+				if(si < firstNonSilent) firstNonSilent = si;
+				break;
+			}
+		}
+	}
+
+	if(firstNonSilent === buffer.length) return buffer;
+	if(firstNonSilent <= leadSamples)    return buffer;
+
+	const trimLen = Math.max(1, buffer.length - firstNonSilent);
+	const out     = eatSfxAudioContext.createBuffer(channelCount, trimLen, sampleRate);
+	for(let ci=0; ci<channelCount; ci++){
+		out.getChannelData(ci).set(channelData[ci].subarray(firstNonSilent));
+	}
+	return out;
+}
+
+function ensureEatSfxAudioContext(){
+	const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+	if(!AudioContextClass) return null;
+
+	if(!eatSfxAudioContext){
+		eatSfxAudioContext = new AudioContextClass();
+	}
+
+	return eatSfxAudioContext;
+}
+
+async function prepareEatSfx(){
+	if(eatSfxReady && eatSfxBuffer) return;
+	if(!eatSfxArrayBuffer) return;
+
+	const ctx = ensureEatSfxAudioContext();
+	if(!ctx) return;
+
+	try{
+		if(ctx.state === "suspended"){
+			await ctx.resume();
+		}
+
+		const decodedBuffer = await ctx.decodeAudioData(eatSfxArrayBuffer.slice(0));
+		eatSfxBuffer = trimLeadingSilence(decodedBuffer);
+		eatSfxReady = true;
+	}catch(_){
+		eatSfxReady = false;
+	}
+}
+
+function loadSounds(){
+	function mk(src, loop=false, volume=1.0){
+		const a = new Audio(src);
+		a.loop   = loop;
+		a.volume = volume;
+		return a;
+	}
+
+	SFX.start      = mk("./Sounds/start.mp3",           false, 1.0);
+	SFX.eat        = mk("./Sounds/pacmanEatDots.mp3",   false, 0.6);
+	SFX.fruit      = mk("./Sounds/pacmanEatFruit.mp3",  false, 0.8);
+	SFX.frightened = mk("./Sounds/ghostBlue.mp3",       false, 0.8);
+	SFX.eatGhost   = mk("./Sounds/pacmanEatGhost.mp3",  false, 0.8);
+	SFX.fail       = mk("./Sounds/fail.mp3",            false, 1.0);
+	SFX.ghostMove  = mk("./Sounds/ghostSound.mp3",      true,  0.35);
+
+	(async()=>{
+		try{
+			const response = await fetch("./Sounds/pacmanEatDots.mp3");
+			eatSfxArrayBuffer = await response.arrayBuffer();
+			if(eatSfxGestureUnlocked){
+				await prepareEatSfx();
+			}
+		}catch(_){
+			eatSfxReady = false;
+		}
+	})();
+}
+
+function playSound(sfx){
+	if(!sfx) return;
+	try{
+		sfx.currentTime = 0;
+		sfx.play().catch(()=>{});
+	}catch(_){}
+}
+
+// Eat-dot: loops while dots are being eaten, stops instantly when not
+function playEatDotSound(){
+	if(!eatSfxReady || !eatSfxAudioContext || !eatSfxBuffer){
+		if(SFX.eat && !eatSfxPlaying){
+			eatSfxPlaying = true;
+			SFX.eat.loop = true;
+			SFX.eat.currentTime = 0;
+			SFX.eat.play().catch(()=>{});
+		}
+		return;
+	}
+
+	if(eatSfxAudioContext.state === "suspended"){
+		eatSfxAudioContext.resume().catch(()=>{});
+	}
+
+	if(eatSfxPlaying) return;
+
+	eatSfxPlaying = true;
+
+	const source = eatSfxAudioContext.createBufferSource();
+	source.buffer = eatSfxBuffer;
+	source.loop = true;
+
+	const gain = eatSfxAudioContext.createGain();
+	gain.gain.value = 0.6;
+
+	source.connect(gain);
+	gain.connect(eatSfxAudioContext.destination);
+	source.start(0);
+
+	eatSfxCurrentSource = source;
+	eatSfxGainNode = gain;
+
+	source.onended = () => {
+		eatSfxPlaying = false;
+		eatSfxCurrentSource = null;
+		eatSfxGainNode = null;
+	};
+}
+
+function stopEatDotSound(){
+	if(!eatSfxPlaying) return;
+	eatSfxPlaying = false;
+
+	if(eatSfxCurrentSource){
+		try{ eatSfxCurrentSource.stop(); }catch(_){}
+		eatSfxCurrentSource = null;
+		eatSfxGainNode = null;
+	}
+
+	if(SFX.eat){
+		SFX.eat.pause();
+		SFX.eat.currentTime = 0;
+		SFX.eat.loop = false;
+	}
+}
+
+function resetEatSound(){
+	stopEatDotSound();
+	if(SFX.eat) SFX.eat.onended = null;
+}
+
+function startGhostMoveSound(){
+	if(!SFX.ghostMove) return;
+	if(!SFX.ghostMove.paused) return;
+	try{
+		SFX.ghostMove.currentTime = 0;
+		SFX.ghostMove.play().catch(()=>{});
+	}catch(_){}
+}
+
+function stopGhostMoveSound(){
+	if(!SFX.ghostMove) return;
+	try{
+		SFX.ghostMove.pause();
+		SFX.ghostMove.currentTime = 0;
+	}catch(_){}
+}
+
+function pauseAllSounds(){
+	for(const key of Object.keys(SFX)){
+		const sfx = SFX[key];
+		if(sfx && !sfx.paused) sfx.pause();
+	}
+	resetEatSound();
+}
+
+function resumeGhostMoveIfNeeded(){
+	if(gameStarted && !gameOver && !isPaused && !frightenedActive){
+		startGhostMoveSound();
+	}
+}
 
 const tileMap1=[
     "XXXXXXXXXXXXXXXXXXX",
@@ -401,6 +616,31 @@ let gameOver=false;
 
 let nextPacmanDirection=null;
 
+let movementLockUntil=0;
+let movementLockLabel="";
+
+function beginMovementLock(ms,label){
+	movementLockUntil=Date.now()+ms;
+	movementLockLabel=label;
+}
+
+function clearMovementLock(){
+	movementLockUntil=0;
+	movementLockLabel="";
+}
+
+function isMovementLocked(){
+	return gameStarted && !gameOver && Date.now()<movementLockUntil;
+}
+
+function getMovementLockSecondsLeft(){
+	if(!isMovementLocked()) return 0;
+	const msLeft=Math.max(0,movementLockUntil-Date.now());
+	return Math.max(1,Math.ceil(msLeft/1000));
+}
+
+let pendingRespawnReset=false;
+
 const SHIELD_THRESHOLD=250;
 const SHIELD_POWER_DURATION=5000;
 const SHIELD_SPAWN_LIFETIME=10000;
@@ -515,12 +755,14 @@ function startFrightenedMode(){
 	frightenedUntil = Date.now() + FRIGHTENED_DURATION_MS;
 	frightenedChainCount = 0;
 
+    stopGhostMoveSound();
+	playSound(SFX.frightened);
+
 	for(const g of ghosts){
 		const rev = oppositeDirection(g.direction);
 		if(canMoveInDirection(g, rev)){
 			g.updateDirection(rev);
 		}
-
 		setGhostFrightenedImage(g);
 	}
 }
@@ -541,6 +783,7 @@ function updateFrightenedMode(){
 			setGhostNormalImage(g);
 			g.updateVelocity();
 		}
+        startGhostMoveSound();
 		return;
 	}
  
@@ -643,23 +886,27 @@ function renderPauseIcon(){
 function pauseGame(){
     if(!gameStarted || gameOver) return;
     if(isPaused) return;
-    isPaused = true;
-    renderPauseIcon();
-    stopLoop();
+    if(isMovementLocked()) return;
+	isPaused = true;
+	renderPauseIcon();
+	pauseAllSounds();
+	stopLoop();
 }
 
 function resumeGame(){
-    if(!gameStarted || gameOver) return;
-    if(!isPaused) return;
-    isPaused = false;
-    renderPauseIcon();
-    startLoop();
+	if(!gameStarted || gameOver) return;
+	if(!isPaused) return;
+	isPaused = false;
+	renderPauseIcon();
+	resumeGhostMoveIfNeeded();
+	startLoop();
 }
 
 function togglePause(){
-    if(!gameStarted || gameOver) return;
-    if(isPaused) resumeGame();
-    else pauseGame();
+	if(!gameStarted || gameOver) return;
+	if(isMovementLocked()) return;
+	if(isPaused) resumeGame();
+	else pauseGame();
 }
 
 function isInsideRect(x,y,rect){
@@ -682,8 +929,6 @@ function handleBoardClick(event){
         togglePause();
     }
 }
-
-
 
 function saveSettingsToStorage(){
     localStorage.setItem(SETTINGS_KEY,JSON.stringify(gameSettings));
@@ -914,13 +1159,10 @@ window.onload=function(){
     context=board.getContext("2d");
 
     loadSettings();
-
-    currentWallIndex=gameSettings.wallIndex;
-
-    loadImages();
-
-    buildSettingsUi();
-
+	currentWallIndex=gameSettings.wallIndex;
+	loadImages();
+	loadSounds();
+	buildSettingsUi();
 
     const startBtn=this.document.getElementById("startBtn");
     if(startBtn) startBtn.addEventListener("click",startGame);
@@ -1092,13 +1334,18 @@ function hideGameOverPopup(){
 
 function goToLobby(){
     stopLoop();
-    hideGameOverPopup();
-    hideSettings();
-    closeMapZoom();
+	stopGhostMoveSound();
+	resetEatSound();
+	hideGameOverPopup();
+	hideSettings();
+	closeMapZoom();
 
-    isPaused = false;
-    renderPauseIcon();
-    setPauseButtonVisible(false);
+	isPaused=false;
+	renderPauseIcon();
+	setPauseButtonVisible(false);
+	clearMovementLock();
+	pendingRespawnReset=false;
+
 
     gameStarted=false;
     gameOver=false;
@@ -1114,7 +1361,6 @@ function goToLobby(){
     shieldTimer=0;
     shieldSpawnedAt=0;
     shieldStartScore=0;
-
     heartSpawnedAt=0;
 
     showLobby();
@@ -1122,12 +1368,16 @@ function goToLobby(){
 
 function startGame(){
     hideLobby();
-    hideSettings();
-    closeMapZoom();
+	hideSettings();
+	closeMapZoom();
+	eatSfxGestureUnlocked = true;
+	prepareEatSfx();
 
-    isPaused = false;
-    renderPauseIcon();
-    setPauseButtonVisible(true);
+	isPaused=false;
+	renderPauseIcon();
+	setPauseButtonVisible(true);
+	beginMovementLock(GAME_START_DELAY_MS,"STARTS IN");
+	pendingRespawnReset=false;
 
     gameStarted=true;
     gameOver=false;
@@ -1154,35 +1404,42 @@ function startGame(){
         ghost.updateDirection(directions[Math.floor(Math.random()*4)]);
     }
 
+    stopGhostMoveSound();
+	if(SFX.start){
+		SFX.start.currentTime=0;
+		SFX.start.play().catch(()=>{});
+		SFX.start.onended=null;
+	}
+
     startLoop();
 }
 
 
 function restartGame(){
     hideGameOverPopup();
-    hideSettings();
-    closeMapZoom();
+	hideSettings();
+	closeMapZoom();
+	eatSfxGestureUnlocked = true;
+	prepareEatSfx();
 
-    isPaused = false;
-    renderPauseIcon();
-    setPauseButtonVisible(false);
+	isPaused=false;
+	renderPauseIcon();
+	setPauseButtonVisible(true);
+	beginMovementLock(GAME_START_DELAY_MS,"STARTS IN");
+	pendingRespawnReset=false;
 
     lives=3;
     score=0;
-
     heartStartScore=score;
 
     gameStarted=true;
     gameOver=false;
-
 
     shieldActive=false;
     shieldTimer=0;
     shieldSpawnedAt=0;
     shieldStartScore=0;
     shields.clear();
-
-
     heartSpawnedAt=0;
     hearts.clear();
 
@@ -1190,6 +1447,13 @@ function restartGame(){
     selectWallBySettings();
     loadMap();
     resetPositions();
+
+    stopGhostMoveSound();
+	if(SFX.start){
+		SFX.start.currentTime=0;
+		SFX.start.play().catch(()=>{});
+		SFX.start.onended=null;
+	}
 
     startLoop();
 }
@@ -1343,20 +1607,15 @@ function loadMap(){
     pacman.velocityX=0;
     pacman.velocityY=0;
     pacman.image=getPacmanIdleImageByDirection(pacman.direction);
-
     pacman.tunnelCooldown=0;
     nextPacmanDirection=null;
 
     heartSpawnedAt=0;
     shieldSpawnedAt=0;
-
-
     shieldActive=false;
     shieldTimer=0;
-
     shieldStartScore=score;
     heartStartScore=score;
-
     pacmanAnimIndex=0;
     pacmanAnimTick=0;
     
@@ -1372,10 +1631,8 @@ function loadMap(){
 function makeCherry(image,col,row,points){
     const x=col*tileSize;
     const y=row*tileSize;
-
     const size=20;
     const offset=(tileSize-size)/2;
-
     const cherry=new Block(image,x+offset,y+offset,size,size);
     cherry.points=points;
 
@@ -1461,8 +1718,43 @@ function frame(ts){
 }
 
 function tick(){
-    updateFrightenedMode();
-    move();
+    if(isMovementLocked()) return;
+
+    if(pendingRespawnReset){
+		pendingRespawnReset=false;
+		resetPositions();
+		setOccupiedFromEntities();
+		return;
+	}
+
+    resumeGhostMoveIfNeeded();
+	updateFrightenedMode();
+	move();
+}
+
+function drawCountdownOverlay(){
+	if(!isMovementLocked()) return;
+
+	const centerX=boardWidth/2;
+	const playableHeight=boardHeight-HUD_HEIGHT;
+	const centerY=HUD_HEIGHT+(playableHeight/2);
+	const seconds=getMovementLockSecondsLeft();
+
+	context.fillStyle="rgba(0,0,0,0.45)";
+	context.fillRect(0,HUD_HEIGHT,boardWidth,playableHeight);
+
+	context.textAlign="center";
+	context.textBaseline="middle";
+
+	context.fillStyle="#ffd54a";
+	context.font="bold 56px sans-serif";
+	context.fillText(String(seconds),centerX,centerY-10);
+
+	context.fillStyle="#fff";
+	context.font="bold 16px sans-serif";
+	context.fillText(movementLockLabel||"READY",centerX,centerY+38);
+
+	context.textAlign="start";
 }
 
 function drawHud(){
@@ -1562,6 +1854,8 @@ function draw(){
     if(pacman && pacman.image){
         context.drawImage(pacman.image, pacman.x, pacman.y + oy, pacman.width, pacman.height);
     }
+
+    drawCountdownOverlay();
 }
 
 function wrapEntity(entity){
@@ -1671,7 +1965,6 @@ function move(){
         if(collision(pacman,wall)){
             pacman.x-=pacman.velocityX;
             pacman.y-=pacman.velocityY;
-
             pacman.velocityX=0;
             pacman.velocityY=0;
             break;
@@ -1679,7 +1972,6 @@ function move(){
     }
 
     updatePacmanAnimation();
-
     setOccupiedFromEntities();
 
     for(const ghost of ghosts){
@@ -1697,14 +1989,33 @@ function move(){
  
 			if(!shieldActive){
 				lives -= 1;
-				if(lives === 0){
-					gameOver = true;
+
+				stopGhostMoveSound();
+				stopEatDotSound();
+				playSound(SFX.fail);
+
+				if(lives===0){
+					gameOver=true;
 					showGameOverPopup();
 					stopLoop();
 					return;
 				}
-				resetPositions();
+
+				pacman.velocityX=0;
+				pacman.velocityY=0;
+				nextPacmanDirection=null;
+				pacmanAnimIndex=0;
+				pacmanAnimTick=0;
+				pacman.image=getPacmanIdleImageByDirection(pacman.direction);
+
+				for(const g of ghosts){
+					g.velocityX=0;
+					g.velocityY=0;
+				}
+
 				setOccupiedFromEntities();
+				pendingRespawnReset=true;
+				beginMovementLock(RESPAWN_DELAY_MS,"RESPAWN IN");
 				return;
 			}
 		}
@@ -1757,7 +2068,12 @@ function move(){
             break;
         }
     }
-    if(foodEaten) foods.delete(foodEaten);
+    if(foodEaten){
+		foods.delete(foodEaten);
+		playEatDotSound();
+	}else{
+		stopEatDotSound();
+	}
 
     let cherryEaten=null;
     for(const cherry of cherries){
@@ -1769,7 +2085,7 @@ function move(){
     }
     if(cherryEaten){
 		cherries.delete(cherryEaten);
- 
+        playSound(SFX.fruit);
 		if(cherryEaten.points===100){
 			startFrightenedMode();
 		}
@@ -1785,11 +2101,11 @@ function move(){
         }
     }
     if(heartEaten){
-        hearts.delete(heartEaten);
-        heartSpawnedAt=0;
-
-        heartStartScore=score;
-    } 
+		hearts.delete(heartEaten);
+		heartSpawnedAt=0;
+		heartStartScore=score;
+		playSound(SFX.fruit);
+	} 
         
 
     let shieldEaten=null;
@@ -1800,9 +2116,10 @@ function move(){
         }
     }
     if(shieldEaten){
-        shields.delete(shieldEaten);
-        activateShield();
-    } 
+		shields.delete(shieldEaten);
+		activateShield();
+		playSound(SFX.fruit);
+	}
 
     if(foods.size==0 && cherries.size==0){
         selectMapBySettings();
@@ -1820,7 +2137,7 @@ function movePacman(e){
     }
 
     if(!gameStarted) return;
-
+    if(isMovementLocked()) return;
     if(gameOver){
         return;
     }
@@ -1852,6 +2169,8 @@ function collision(a,b){
 };
 
 function resetPositions(){
+    resetEatSound();
+
     pacman.reset();
     pacman.velocityX=0;
     pacman.velocityY=0;
@@ -1888,9 +2207,7 @@ class Block{
         this.velocityY=0;
 
         this.points=0;
-
         this.tunnelCooldown=0;
-
         this.dirImages=null;
 
         this.isGhost = false;
@@ -2170,10 +2487,8 @@ function confirmZoomSelection(){
 
     let raf=0;
     let lastTs=0;
-
     let mouthTimer=0;
     let mouthIndex=0;
-
     let dotsOffset=0;
     let dotSpacing=0;
 
