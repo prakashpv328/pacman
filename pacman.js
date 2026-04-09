@@ -15,12 +15,12 @@ let context;
 let isPaused = false;
 
 const PAUSE_KEY = "Space";
-const PAUSE_BTN_PLAY_SRC ="./play.png";
-const PAUSE_BTN_PAUSE_SRC ="./pause.png";
+const PAUSE_BTN_PLAY_SRC ="./Images/HeaderIcons/play.png";
+const PAUSE_BTN_PAUSE_SRC ="./Images/HeaderIcons/pause.png";
 
 const SOUND_KEY="KeyP";
-const SOUND_BTN_ON_SRC="./sound_on.png";
-const SOUND_BTN_OFF_SRC="./sound_off.png";
+const SOUND_BTN_ON_SRC="./Images/HeaderIcons/sound_on.png";
+const SOUND_BTN_OFF_SRC="./Images/HeaderIcons/sound_off.png";
 
 let pauseBtnPlayImage;
 let pauseBtnPauseImage;
@@ -1180,10 +1180,10 @@ function loadDirGhostImages(prefix){
     };
 
     return {
-        U:mk(`./${prefix}_up_ghost.png`),
-        D:mk(`./${prefix}_down_ghost.png`),
-        L:mk(`./${prefix}_left_ghost.png`),
-        R:mk(`./${prefix}_right_ghost.png`),
+        U:mk(`./Images/Ghosts/${prefix}_up_ghost.png`),
+        D:mk(`./Images/Ghosts/${prefix}_down_ghost.png`),
+        L:mk(`./Images/Ghosts/${prefix}_left_ghost.png`),
+        R:mk(`./Images/Ghosts/${prefix}_right_ghost.png`),
     };
 }
 
@@ -1526,18 +1526,18 @@ function loadImages(){
     wallImages=[];
     for(let i=1;i<=4;i++){
         const img=new Image();
-        img.src=`./wall${i}.png`;
+        img.src=`./Images/Walls/wall${i}.png`;
         wallImages.push(img);
     }
 
     blueGhostImage=new Image();
-    blueGhostImage.src="./blue_right_ghost.png";
+    blueGhostImage.src="./Images/Ghosts/blue_right_ghost.png";
     orangeGhostImage=new Image();
-    orangeGhostImage.src="./orange_right_ghost.png";
+    orangeGhostImage.src="./Images/Ghosts/orange_right_ghost.png";
     pinkGhostImage=new Image();
-    pinkGhostImage.src="./pink_right_ghost.png";
+    pinkGhostImage.src="./Images/Ghosts/pink_right_ghost.png";
     redGhostImage=new Image();
-    redGhostImage.src="./red_right_ghost.png";
+    redGhostImage.src="./Images/Ghosts/red_right_ghost.png";
 
     redGhostImgs=loadDirGhostImages("red");
     pinkGhostImgs=loadDirGhostImages("pink");
@@ -1546,36 +1546,36 @@ function loadImages(){
 
 
     pacmanFullUpImage=new Image();
-    pacmanFullUpImage.src="./pacmanFullUp.png";
+    pacmanFullUpImage.src="./Images/Pacman/pacmanFullUp.png";
     pacmanFullDownImage=new Image();
-    pacmanFullDownImage.src="./pacmanFullDown.png";
+    pacmanFullDownImage.src="./Images/Pacman/pacmanFullDown.png";
     pacmanFullLeftImage=new Image();
-    pacmanFullLeftImage.src="./pacmanFullLeft.png";
+    pacmanFullLeftImage.src="./Images/Pacman/pacmanFullLeft.png";
     pacmanFullRightImage=new Image();
-    pacmanFullRightImage.src="./pacmanFullRight.png";
+    pacmanFullRightImage.src="./Images/Pacman/pacmanFullRight.png";
 
     pacmanUpImage=new Image();
-    pacmanUpImage.src="./pacmanUp.png";
+    pacmanUpImage.src="./Images/Pacman/pacmanUp.png";
     pacmanDownImage=new Image();
-    pacmanDownImage.src="./pacmanDown.png";
+    pacmanDownImage.src="./Images/Pacman/pacmanDown.png";
     pacmanLeftImage=new Image();
-    pacmanLeftImage.src="./pacmanLeft.png";
+    pacmanLeftImage.src="./Images/Pacman/pacmanLeft.png";
     pacmanRightImage=new Image();
-    pacmanRightImage.src="./pacmanRight.png";
+    pacmanRightImage.src="./Images/Pacman/pacmanRight.png";
 
     pacmanCloseImage=new Image();
-    pacmanCloseImage.src="./pacmanClose.png";
+    pacmanCloseImage.src="./Images/Pacman/pacmanClose.png";
 
     smallCherryImage=new Image();
-    smallCherryImage.src="./smallCherry.png";
+    smallCherryImage.src="./Images/Powers/smallCherry.png";
     bigCherryImage=new Image();
-    bigCherryImage.src="./bigCherry.png";
+    bigCherryImage.src="./Images/Powers/bigCherry.png";
 
     shieldImage=new Image();
-    shieldImage.src="./shield.png";
+    shieldImage.src="./Images/Powers/shield.png";
 
     heartImage=new Image();
-    heartImage.src="./life.png";
+    heartImage.src="./Images/Powers/life.png";
 
     pauseBtnPlayImage = new Image();
     pauseBtnPlayImage.src = PAUSE_BTN_PLAY_SRC;
@@ -1584,10 +1584,10 @@ function loadImages(){
     pauseBtnPauseImage.src = PAUSE_BTN_PAUSE_SRC;
 
     bonusGhostBlueImg = new Image();
-	bonusGhostBlueImg.src = "./bonus_ghost_blue.png";
+	bonusGhostBlueImg.src = "./Images/Ghosts/bonus_ghost_blue.png";
  
 	bonusGhostWhiteImg = new Image();
-	bonusGhostWhiteImg.src = "./bonus_ghost_white.png";
+	bonusGhostWhiteImg.src = "./Images/Ghosts/bonus_ghost_white.png";
 
     soundBtnOnImage = new Image();
     soundBtnOnImage.src = SOUND_BTN_ON_SRC;
@@ -2402,7 +2402,7 @@ function buildSettingsUi(){
 
         const img=document.createElement("img");
         img.className="wall-thumb";
-        img.src=`./wall${w+1}.png`;
+        img.src=`./Images/Walls/wall${w+1}.png`;
         img.alt=`Wall ${w+1}`;
 
         const label=document.createElement("div");
@@ -2562,9 +2562,9 @@ function confirmZoomSelection(){
     const MOUTH_FPS=8;
 
     const PAC_FRAMES=[
-        "./pacmanFullRight.png",
-        "./pacmanRight.png",
-        "./pacmanClose.png",
+        "./Images/Pacman/pacmanFullRight.png",
+        "./Images/Pacman/pacmanRight.png",
+        "./Images/Pacman/pacmanClose.png",
     ];
 
     let raf=0;
@@ -2657,10 +2657,10 @@ function confirmZoomSelection(){
     }
 
     function srcFor(color,dir){
-        if(dir==="R") return `./${color}_right_ghost.png`;
-        if(dir==="L") return `./${color}_left_ghost.png`;
-        if(dir==="U") return `./${color}_up_ghost.png`;
-        if(dir==="D") return `./${color}_down_ghost.png`;
+        if(dir==="R") return `./Images/Ghosts/${color}_right_ghost.png`;
+        if(dir==="L") return `./Images/Ghosts/${color}_left_ghost.png`;
+        if(dir==="U") return `./Images/Ghosts/${color}_up_ghost.png`;
+        if(dir==="D") return `./Images/Ghosts/${color}_down_ghost.png`;
     }
 
     function isLobbyVisible(){
