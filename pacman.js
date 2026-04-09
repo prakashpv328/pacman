@@ -5,6 +5,8 @@ const tileSize=32;
 
 const HUD_HEIGHT=40;
 const HUD_PADDING=10;
+const HUD_ICON_SIZE=22;
+const HUD_PAUSE_BUTTON_SIZE=32;
 
 const boardWidth=columnCount*tileSize;
 const boardHeight=rowCount*tileSize+HUD_HEIGHT;
@@ -15,6 +17,11 @@ let isPaused = false;
 const PAUSE_KEY = "Space";
 const PAUSE_BTN_PLAY_SRC = "./play.png";
 const PAUSE_BTN_PAUSE_SRC = "./pause.png";
+
+let pauseBtnPlayImage;
+let pauseBtnPauseImage;
+let pauseButtonVisible = false;
+let pauseButtonRect = {x:0,y:0,width:0,height:0};
 
 const GHOST_RESPAWN_FREEZE_MS=2000;
 const GHOST_RESPAWN_BLINK_INTERVAL_MS=160;
@@ -621,15 +628,16 @@ function loadSettings(){
 }
 
 function setPauseButtonVisible(visible){
-    const btn = document.getElementById("pauseBtn");
-    if(!btn) return;
-    btn.classList.toggle("hidden", !visible);
+    pauseButtonVisible = visible;
+    if(!visible){
+        pauseButtonRect = {x:0,y:0,width:0,height:0};
+    }
 }
 
 function renderPauseIcon(){
-    const icon = document.getElementById("pauseBtnIcon");
-    if(!icon) return;
-    icon.src = isPaused ? PAUSE_BTN_PLAY_SRC : PAUSE_BTN_PAUSE_SRC;
+    if(gameStarted && !gameOver){
+        draw();
+    }
 }
 
 function pauseGame(){
@@ -652,6 +660,27 @@ function togglePause(){
     if(!gameStarted || gameOver) return;
     if(isPaused) resumeGame();
     else pauseGame();
+}
+
+function isInsideRect(x,y,rect){
+    return x>=rect.x && x<=rect.x+rect.width && y>=rect.y && y<=rect.y+rect.height;
+}
+
+function handleBoardClick(event){
+    if(!pauseButtonVisible || !gameStarted || gameOver) return;
+
+    const canvasRect = board.getBoundingClientRect();
+    if(canvasRect.width===0 || canvasRect.height===0) return;
+
+    const scaleX = board.width / canvasRect.width;
+    const scaleY = board.height / canvasRect.height;
+
+    const x = (event.clientX - canvasRect.left) * scaleX;
+    const y = (event.clientY - canvasRect.top) * scaleY;
+
+    if(isInsideRect(x,y,pauseButtonRect)){
+        togglePause();
+    }
 }
 
 
@@ -931,6 +960,8 @@ window.onload=function(){
         })
     }
 
+    board.addEventListener("click",handleBoardClick);
+
     showLobby();
 
     this.document.addEventListener("keydown",movePacman);
@@ -948,10 +979,6 @@ window.onload=function(){
         }
     });
 
-    const pauseBtn = document.getElementById("pauseBtn");
-    if(pauseBtn){
-        pauseBtn.addEventListener("click", () => togglePause());
-    }
     renderPauseIcon();
     setPauseButtonVisible(false);
 };
@@ -1223,6 +1250,12 @@ function loadImages(){
     heartImage=new Image();
     heartImage.src="./life.png";
 
+    pauseBtnPlayImage = new Image();
+    pauseBtnPlayImage.src = PAUSE_BTN_PLAY_SRC;
+
+    pauseBtnPauseImage = new Image();
+    pauseBtnPauseImage.src = PAUSE_BTN_PAUSE_SRC;
+
     bonusGhostBlueImg = new Image();
 	bonusGhostBlueImg.src = "./bonus_ghost_blue.png";
  
@@ -1444,7 +1477,7 @@ function drawHud(){
     context.fillStyle = "#fff";
 
     const cy = HUD_HEIGHT / 2;
-    const iconSize = 22;
+    const iconSize = HUD_ICON_SIZE;
 
     let x = HUD_PADDING;
 
@@ -1469,6 +1502,27 @@ function drawHud(){
     const scoreText = String(score);
     const scoreW = context.measureText(scoreText).width;
     context.fillText(scoreText, (boardWidth - scoreW) / 2, cy);
+
+    if(pauseButtonVisible){
+        const btnSize = HUD_PAUSE_BUTTON_SIZE;
+        const btnX = boardWidth - HUD_PADDING - btnSize;
+        const btnY = (HUD_HEIGHT - btnSize) / 2;
+        const icon = isPaused ? pauseBtnPlayImage : pauseBtnPauseImage;
+
+        context.fillStyle = "rgba(0,0,0,0.35)";
+        context.fillRect(btnX, btnY, btnSize, btnSize);
+        context.strokeStyle = "rgba(255,255,255,0.22)";
+        context.strokeRect(btnX + 0.5, btnY + 0.5, btnSize - 1, btnSize - 1);
+
+        if(icon && icon.complete){
+            const iconPad = (btnSize - iconSize) / 2;
+            context.drawImage(icon, btnX + iconPad, btnY + iconPad, iconSize, iconSize);
+        }
+
+        pauseButtonRect = {x:btnX,y:btnY,width:btnSize,height:btnSize};
+    }else{
+        pauseButtonRect = {x:0,y:0,width:0,height:0};
+    }
 
 }
 
