@@ -6,7 +6,7 @@ const tileSize=32;
 const HUD_HEIGHT=40;
 const HUD_PADDING=10;
 const HUD_ICON_SIZE=22;
-const HUD_PAUSE_BUTTON_SIZE=32;
+const HUD_PAUSE_BUTTON_SIZE=36;
 
 const boardWidth=columnCount*tileSize;
 const boardHeight=rowCount*tileSize+HUD_HEIGHT;
@@ -18,10 +18,20 @@ const PAUSE_KEY = "Space";
 const PAUSE_BTN_PLAY_SRC ="./play.png";
 const PAUSE_BTN_PAUSE_SRC ="./pause.png";
 
+const SOUND_KEY="KeyP";
+const SOUND_BTN_ON_SRC="./sound_on.png";
+const SOUND_BTN_OFF_SRC="./sound_off.png";
+
 let pauseBtnPlayImage;
 let pauseBtnPauseImage;
 let pauseButtonVisible = false;
 let pauseButtonRect = {x:0,y:0,width:0,height:0};
+
+let soundBtnOnImage;
+let soundBtnOffImage;
+let soundEnabled=true;
+let soundButtonVisible=false;
+let soundButtonRect={x:0,y:0,width:0,height:0};
 
 const GAME_START_DELAY_MS=4000;
 const RESPAWN_DELAY_MS=3000;
@@ -187,7 +197,7 @@ function loadSounds(){
 }
 
 function playSound(sfx){
-	if(!sfx) return;
+	if(!sfx || !soundEnabled) return;
 	try{
 		sfx.currentTime = 0;
 		sfx.play().catch(()=>{});
@@ -196,6 +206,7 @@ function playSound(sfx){
 
 // Eat-dot: loops while dots are being eaten, stops instantly when not
 function playEatDotSound(){
+    if(!soundEnabled) return;
 	if(!eatSfxReady || !eatSfxAudioContext || !eatSfxBuffer){
 		if(SFX.eat && !eatSfxPlaying){
 			eatSfxPlaying = true;
@@ -258,8 +269,7 @@ function resetEatSound(){
 }
 
 function startGhostMoveSound(){
-	if(!SFX.ghostMove) return;
-	if(!SFX.ghostMove.paused) return;
+    if(!soundEnabled || !SFX.ghostMove || !SFX.ghostMove.paused) return;
 	try{
 		SFX.ghostMove.currentTime = 0;
 		SFX.ghostMove.play().catch(()=>{});
@@ -286,6 +296,32 @@ function resumeGhostMoveIfNeeded(){
 	if(gameStarted && !gameOver && !isPaused && !frightenedActive){
 		startGhostMoveSound();
 	}
+}
+
+// add sound toggle helpers
+function setSoundButtonVisible(visible){
+    soundButtonVisible = visible;
+    if(!visible){
+        soundButtonRect = { x: 0, y: 0, width: 0, height: 0 };
+    }
+}
+
+function toggleSound(){
+    soundEnabled = !soundEnabled;
+
+    if(!soundEnabled){
+        pauseAllSounds();
+    }else{
+        if(gameStarted && !gameOver && !isPaused){
+            resumeGhostMoveIfNeeded();
+        }
+    }
+
+    draw();
+}
+
+function isSoundOn(){
+    return soundEnabled;
 }
 
 const tileMap1=[
@@ -914,7 +950,7 @@ function isInsideRect(x,y,rect){
 }
 
 function handleBoardClick(event){
-    if(!pauseButtonVisible || !gameStarted || gameOver) return;
+    if((!soundButtonVisible && !pauseButtonVisible) || !gameStarted || gameOver) return;
 
     const canvasRect = board.getBoundingClientRect();
     if(canvasRect.width===0 || canvasRect.height===0) return;
@@ -925,7 +961,12 @@ function handleBoardClick(event){
     const x = (event.clientX - canvasRect.left) * scaleX;
     const y = (event.clientY - canvasRect.top) * scaleY;
 
-    if(isInsideRect(x,y,pauseButtonRect)){
+    if(soundButtonVisible && isInsideRect(x, y, soundButtonRect)){
+        toggleSound();
+        return;
+    }
+
+    if(pauseButtonVisible && isInsideRect(x, y, pauseButtonRect)){
         togglePause();
     }
 }
@@ -1247,6 +1288,18 @@ function handleUiKeys(e){
         return;
     }
 
+    if(e.code === SOUND_KEY){
+        e.preventDefault();
+        toggleSound();
+        return;
+    }
+
+    if(e.code === PAUSE_KEY){
+        e.preventDefault();
+        togglePause();
+        return;
+    }
+
     if(isMapZoomVisible()){
         if(e.code==="Enter"){
             e.preventDefault();
@@ -1325,6 +1378,8 @@ function showGameOverPopup(){
     if(scoreEl) scoreEl.textContent=String(score);
     if(overlay) overlay.classList.remove("hidden");
     setPauseButtonVisible(false);
+    setPauseButtonVisible(false);
+    setSoundButtonVisible(false);
 }
 
 function hideGameOverPopup(){
@@ -1346,6 +1401,8 @@ function goToLobby(){
 	clearMovementLock();
 	pendingRespawnReset=false;
 
+    setPauseButtonVisible(true);
+    setSoundButtonVisible(true);
 
     gameStarted=false;
     gameOver=false;
@@ -1378,6 +1435,9 @@ function startGame(){
 	setPauseButtonVisible(true);
 	beginMovementLock(GAME_START_DELAY_MS,"STARTS IN");
 	pendingRespawnReset=false;
+
+    setPauseButtonVisible(true);
+    setSoundButtonVisible(true);
 
     gameStarted=true;
     gameOver=false;
@@ -1427,6 +1487,9 @@ function restartGame(){
 	setPauseButtonVisible(true);
 	beginMovementLock(GAME_START_DELAY_MS,"STARTS IN");
 	pendingRespawnReset=false;
+
+    setPauseButtonVisible(true);
+    setSoundButtonVisible(true);
 
     lives=3;
     score=0;
@@ -1525,6 +1588,12 @@ function loadImages(){
  
 	bonusGhostWhiteImg = new Image();
 	bonusGhostWhiteImg.src = "./bonus_ghost_white.png";
+
+    soundBtnOnImage = new Image();
+    soundBtnOnImage.src = SOUND_BTN_ON_SRC;
+
+    soundBtnOffImage = new Image();
+    soundBtnOffImage.src = SOUND_BTN_OFF_SRC;
 
     hudLifeImg=heartImage;
     hudShieldImg=shieldImage;
@@ -1770,6 +1839,7 @@ function drawHud(){
 
     const cy = HUD_HEIGHT / 2;
     const iconSize = HUD_ICON_SIZE;
+    const controlIconSize = 30;
 
     let x = HUD_PADDING;
 
@@ -1795,27 +1865,39 @@ function drawHud(){
     const scoreW = context.measureText(scoreText).width;
     context.fillText(scoreText, (boardWidth - scoreW) / 2, cy);
 
+    if(soundButtonVisible){
+        const btnSize=HUD_PAUSE_BUTTON_SIZE;
+        const btnX=boardWidth-HUD_PADDING-btnSize*2-8;
+        const btnY=(HUD_HEIGHT-btnSize)/2;
+        const icon=soundEnabled?soundBtnOnImage:soundBtnOffImage;
+
+        if(icon && icon.complete){
+            const iconX = btnX + (btnSize - controlIconSize) / 2;
+            const iconY = btnY + (btnSize - controlIconSize) / 2;
+            context.drawImage(icon, iconX, iconY, controlIconSize, controlIconSize);
+        }
+
+        soundButtonRect = { x: btnX, y: btnY, width: btnSize, height: btnSize };
+    }else{
+        soundButtonRect = { x: 0, y: 0, width: 0, height: 0 };
+    }
+
     if(pauseButtonVisible){
         const btnSize = HUD_PAUSE_BUTTON_SIZE;
         const btnX = boardWidth - HUD_PADDING - btnSize;
         const btnY = (HUD_HEIGHT - btnSize) / 2;
         const icon = isPaused ? pauseBtnPlayImage : pauseBtnPauseImage;
 
-        context.fillStyle = "rgba(0,0,0,0.35)";
-        context.fillRect(btnX, btnY, btnSize, btnSize);
-        context.strokeStyle = "rgba(255,255,255,0.22)";
-        context.strokeRect(btnX + 0.5, btnY + 0.5, btnSize - 1, btnSize - 1);
-
         if(icon && icon.complete){
-            const iconPad = (btnSize - iconSize) / 2;
-            context.drawImage(icon, btnX + iconPad, btnY + iconPad, iconSize, iconSize);
+            const iconX = btnX + (btnSize - controlIconSize) / 2;
+            const iconY = btnY + (btnSize - controlIconSize) / 2;
+            context.drawImage(icon, iconX, iconY, controlIconSize, controlIconSize);
         }
 
         pauseButtonRect = {x:btnX,y:btnY,width:btnSize,height:btnSize};
     }else{
         pauseButtonRect = {x:0,y:0,width:0,height:0};
     }
-
 }
 
 function draw(){
