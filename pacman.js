@@ -1363,6 +1363,57 @@ function handleUiKeys(e){
     }
 }
 
+window.addEventListener("load", function() {
+    const mobileControls = document.getElementById("mobileControls");
+    if (!mobileControls) return;
+
+    if (isMobile) {
+        mobileControls.style.display = "flex";
+    } else {
+        mobileControls.style.display = "none";
+    }
+
+    const ctrlButtons = mobileControls.querySelectorAll(".ctrl-btn");
+    
+    ctrlButtons.forEach(button => {
+        button.addEventListener("touchstart",function(e){
+            e.preventDefault();
+            handleMobileInput(button.dataset.dir);
+        });
+
+        button.addEventListener("click",function(e){
+            e.preventDefault();
+            handleMobileInput(button.dataset.dir);
+        })
+    });
+});
+
+function handleMobileInput(direction){
+    if(!gameStarted) return;
+    if(isMovementLocked()) return;
+    if(gameOver) return;
+
+    switch(direction){
+        case "up":
+            nextPacmanDirection="U";
+            break;
+        case "down":
+            nextPacmanDirection="D";
+            break;
+        case "left":
+            nextPacmanDirection="L";
+            break;
+        case "right":
+            nextPacmanDirection="R";
+            break;
+    }
+
+    if(pacman && pacman.velocityX===0 && pacman.velocityY===0 && nextPacmanDirection){
+        pacman.direction=nextPacmanDirection;
+        pacman.updateVelocity();
+    }
+}
+
 function showLobby(){
     const lobby=document.getElementById("lobbyOverlay");
     if(lobby) lobby.classList.remove("hidden");
