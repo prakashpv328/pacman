@@ -3,10 +3,11 @@ const rowCount=21;
 const columnCount=19;
 const tileSize=32;
 
-const HUD_HEIGHT=40;
-const HUD_PADDING=10;
-const HUD_ICON_SIZE=22;
-const HUD_PAUSE_BUTTON_SIZE=36;
+const isMobile = window.matchMedia("(max-width: 480px)").matches;
+const HUD_HEIGHT=isMobile ? 80 : 40;
+const HUD_PADDING=isMobile ? 15 : 10;
+const HUD_ICON_SIZE=isMobile ? 40 : 22;
+const HUD_PAUSE_BUTTON_SIZE=isMobile ? 60 : 36;
 
 const boardWidth=columnCount*tileSize;
 const boardHeight=rowCount*tileSize+HUD_HEIGHT;
@@ -1833,13 +1834,13 @@ function drawHud(){
     context.fillStyle = "rgba(255,255,255,0.18)";
     context.fillRect(0, HUD_HEIGHT - 1, boardWidth, 1);
 
-    context.font = "16px sans-serif";
+    context.font = isMobile ? "bold 30px sans-serif" : "16px sans-serif";
     context.textBaseline = "middle";
     context.fillStyle = "#fff";
 
-    const cy = HUD_HEIGHT / 2;
+    const cy =  HUD_HEIGHT / 2;
     const iconSize = HUD_ICON_SIZE;
-    const controlIconSize = 30;
+    const controlIconSize = isMobile ? 60 : 30;
 
     let x = HUD_PADDING;
 
