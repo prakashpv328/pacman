@@ -564,3 +564,99 @@ kbd{
     font-weight:800;
     margin-top:4px;
 }
+
+
+
+@media (max-width: 480px){
+
+    html, body{
+        overflow-x: hidden;
+    }
+
+    #gameContainer{
+        width:100vw;
+        height:100vh;
+        max-width:100%;
+        max-height:100%;
+    }
+
+    .lobby{
+        padding:16px 12px;
+        overflow:hidden; 
+    }
+
+    .lobby-title{
+        font-size:30px;
+        letter-spacing:2px;
+    }
+
+    .lobby-top{
+        padding-top:30px;
+    }
+
+    .icon-btn{
+        top:6px;
+        right:6px;
+        width:34px;
+        height:34px;
+    }
+
+    .sprite-row{
+        gap:6px;
+    }
+
+    .sprite-row img:nth-child(n+4){
+        display:none;
+    }
+
+    .sprite{
+        width:36px;
+        height:36px;
+    }
+
+    .sprite.pac{
+        width:42px;
+        height:42px;
+    }
+
+    .rules{
+        width:92%;
+        max-width:92%;
+        margin:0 auto;
+        padding:10px 8px;
+        box-sizing:border-box;
+    }
+
+    .rule{
+        font-size:11px;
+        gap:6px;
+    }
+
+    .rule span{
+        white-space:nowrap;
+    }
+
+    .menu-btn{
+        width:90%;
+        font-size:14px;
+        padding:12px;
+    }
+
+    .keys{
+        font-size:10px;
+        gap:5px;
+        text-align:center;
+    }
+
+    kbd{
+        padding:3px 5px;
+    }
+
+    .lobby-middle{
+        gap:10px;
+    }
+
+    .lobby-bottom{
+        gap:8px;
+    }
+}
