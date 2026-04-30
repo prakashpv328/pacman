@@ -48,6 +48,9 @@ const FRIGHTENED_BLINK_MS=2000;
 const FRIGHTENED_BLINK_INTERVAL_MS=200;
 
 const GHOST_EAT_SCORES = [200,400,600,800];
+
+const HIGH_SCORE_KEY="pacman_high_score";
+let highScore=Number(localStorage.getItem(HIGH_SCORE_KEY)) || 0;
  
 let frightenedActive=false;
 let frightenedUntil=0;
@@ -205,7 +208,6 @@ function playSound(sfx){
 	}catch(_){}
 }
 
-// Eat-dot: loops while dots are being eaten, stops instantly when not
 function playEatDotSound(){
     if(!soundEnabled) return;
 	if(!eatSfxReady || !eatSfxAudioContext || !eatSfxBuffer){
@@ -299,7 +301,6 @@ function resumeGhostMoveIfNeeded(){
 	}
 }
 
-// add sound toggle helpers
 function setSoundButtonVisible(visible){
     soundButtonVisible = visible;
     if(!visible){
@@ -323,6 +324,38 @@ function toggleSound(){
 
 function isSoundOn(){
     return soundEnabled;
+}
+
+
+function updateHighScore() {
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem(HIGH_SCORE_KEY, highScore);
+        return true;
+    }
+    return false;
+}
+
+function updateLobbyHighScore() {
+    const highScoreText = document.getElementById('lobbyHighScoreText');
+    if (!highScoreText) return;
+
+    const hasPlayed = localStorage.getItem(HIGH_SCORE_KEY) !== null;
+
+    if (hasPlayed) {
+        highScoreText.textContent = `High Score: ${highScore}`;
+        highScoreText.classList.add('has-score');
+    } else {
+        highScoreText.textContent = 'No matches played yet';
+        highScoreText.classList.remove('has-score');
+    }
+}
+
+function updateSettingsHighScore() {
+    const settingsHighScore = document.getElementById('settingsHighScore');
+    if (settingsHighScore) {
+        settingsHighScore.textContent = highScore > 0 ? highScore : '0';
+    }
 }
 
 const tileMap1=[
@@ -1044,6 +1077,7 @@ function renderSettings(){
     }
 
     renderMapPreviews();
+    updateSettingsHighScore();
 }
 
 function saveSettings(){
@@ -1265,6 +1299,7 @@ window.onload=function(){
 
     renderPauseIcon();
     setPauseButtonVisible(false);
+    updateLobbyHighScore();
 };
 
 function zoomPrevMap(){
@@ -1424,12 +1459,31 @@ function hideLobby(){
     if(lobby) lobby.classList.add("hidden");
 }
 
-function showGameOverPopup(){
-    const overlay=document.getElementById("gameOverOverlay");
-    const scoreEl=document.getElementById("finalScoreText");
-    if(scoreEl) scoreEl.textContent=String(score);
-    if(overlay) overlay.classList.remove("hidden");
-    setPauseButtonVisible(false);
+function showGameOverPopup() {
+    const overlay = document.getElementById("gameOverOverlay");
+    const scoreEl = document.getElementById("finalScoreText");
+    
+    if (scoreEl) scoreEl.textContent = String(score);
+    
+    const isNewHighScore = updateHighScore();
+    
+    if (localStorage.getItem(HIGH_SCORE_KEY) === null) {
+        localStorage.setItem(HIGH_SCORE_KEY, score);
+        highScore = score;
+    }
+    
+    const cardHeader = overlay?.querySelector('.card-header');
+    if (cardHeader && isNewHighScore && score > 0) {
+        const existingBadge = cardHeader.querySelector('.new-high-score-badge');
+        if (existingBadge) existingBadge.remove();
+        
+        const badge = document.createElement('div');
+        badge.className = 'new-high-score-badge';
+        badge.textContent = '🎉 Congratulations! New High Score! 🎉';
+        cardHeader.appendChild(badge);
+    }
+    
+    if (overlay) overlay.classList.remove("hidden");
     setPauseButtonVisible(false);
     setSoundButtonVisible(false);
 }
@@ -1471,6 +1525,8 @@ function goToLobby(){
     shieldSpawnedAt=0;
     shieldStartScore=0;
     heartSpawnedAt=0;
+
+    updateLobbyHighScore();
 
     showLobby();
 }

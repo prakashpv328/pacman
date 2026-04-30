@@ -48,6 +48,11 @@
                             <div class="rule"><b>Shield</b><span>Every 250 pts (5s)</span></div>
                             <div class="rule"><b>Heart</b><span>Every 150 pts if (Lives &lt; 3) (10s)</span></div>
                         </div>
+
+                        <div class="high-score-display">
+                            <p id="lobbyHighScoreText" class="lobby-high-score-text">No matches played yet</p>
+                        </div>
+
                     </div>
 
                     <div class="lobby-bottom">
@@ -106,7 +111,19 @@
                                     Random
                                 </div>
                             </button>
-                        </div>                         
+                        </div> 
+
+                        <div class="settings-title-row" style="margin-top:14px">
+                            <div class="settings-title">Statistics</div>
+                        </div>
+
+                        <div class="stats-panel">
+                            <div class="stat-item">
+                                <span class="stat-label">High Score</span>
+                                <span id="settingsHighScore" class="stat-value">0</span>
+                            </div>
+                        </div>
+
                     </div>
 
                     <div class="actions">
