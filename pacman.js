@@ -109,6 +109,9 @@ let eatSfxReady = false;
 let eatSfxPlaying = false;
 let eatSfxGestureUnlocked = false;
 
+let mapsCompleted=0;
+const BASE_BONUS_POINTS=500;
+
 function trimLeadingSilence(buffer, threshold=0.012, minLeadSeconds=0.06){
 	if(!buffer || buffer.numberOfChannels===0) return buffer;
 
@@ -677,6 +680,25 @@ function maybeTurnGhostAtIntersection(ghost){
     }
 
     ghost.updateDirection(pickRandomDirection(pool));
+}
+
+function showMapCompleteBonus(bonusPoints,callback){
+    const overlay=document.getElementById("mapCompleteOverlay");
+    const bonusText=document.getElementById("mapCompleteBonus");
+
+    if(!overlay||!bonusText){
+        if(callback) setTimeout(callback,2000);
+        return;
+    }
+
+    bonusText.textContent=`BONUS: +${bonusPoints}`;
+
+    overlay.classList.add('active');
+
+    setTimeout(()=>{
+        overlay.classList.remove('active');
+        if(callback) callback();
+    },2000);
 }
 
 let score=0;
@@ -1553,6 +1575,8 @@ function startGame(){
     lives=3;
     score=0;
 
+    mapsCompleted=0;
+
     heartStartScore=0;
 
     hearts.clear();
@@ -1601,6 +1625,9 @@ function restartGame(){
 
     lives=3;
     score=0;
+
+    mapsCompleted=0;
+
     heartStartScore=score;
 
     gameStarted=true;
@@ -2312,10 +2339,33 @@ function move(){
 	}
 
     if(foods.size==0 && cherries.size==0){
-        selectMapBySettings();
-        selectWallBySettings();
-        loadMap();
-        resetPositions();
+
+        mapsCompleted++;
+        const bonusPoints=BASE_BONUS_POINTS*mapsCompleted;
+
+        score+=bonusPoints;
+
+        stopGhostMoveSound();
+        stopEatDotSound();
+
+        const wasMovementLocked=isMovementLocked();
+        beginMovementLock(999999,"MAP COMPLETE");
+
+        showMapCompleteBonus(bonusPoints,()=>{
+            selectMapBySettings();
+            selectWallBySettings();
+            loadMap();
+            resetPositions();
+
+            if(!wasMovementLocked){
+                clearMovementLock();
+            }
+
+            if(!isPaused && !gameOver){
+                startGhostMoveSound();
+            }
+        });
+        return;
     }
     setOccupiedFromEntities();
 }
