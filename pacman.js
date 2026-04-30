@@ -1421,29 +1421,59 @@ function handleUiKeys(e){
 }
 
 window.addEventListener("load", function() {
-    const mobileControls = document.getElementById("mobileControls");
-    if (!mobileControls) return;
+    const portrait = document.getElementById("mobileControls");  
+    const leftPad  = document.getElementById("mobileControlsLeft");
+    const rightPad = document.getElementById("mobileControlsRight");
 
     if (isMobile) {
-        mobileControls.style.display = "flex";
+        if (portrait) portrait.style.removeProperty("display");
+        if (leftPad) leftPad.style.removeProperty("display");
+        if (rightPad) rightPad.style.removeProperty("display");
     } else {
-        mobileControls.style.display = "none";
+        if (portrait) portrait.style.display = "none";
+        if (leftPad) leftPad.style.display = "none";
+        if (rightPad) rightPad.style.display = "none";
+        return;
     }
 
-    const ctrlButtons = mobileControls.querySelectorAll(".ctrl-btn");
-    
-    ctrlButtons.forEach(button => {
-        button.addEventListener("touchstart",function(e){
-            e.preventDefault();
-            handleMobileInput(button.dataset.dir);
-        });
+    const ctrlButtons = document.querySelectorAll(".ctrl-btn");
+    console.log("Mobile control buttons found:", ctrlButtons.length);
 
-        button.addEventListener("click",function(e){
+    ctrlButtons.forEach((button) => {
+        const dir = button.dataset.dir;
+        if (!dir) return;
+    
+        button.addEventListener(
+            "touchstart",
+            (e) => {
+              e.preventDefault();
+              handleMobileInput(dir);
+            },
+            { passive: false }
+        );
+
+        button.addEventListener("click", (e) => {
             e.preventDefault();
-            handleMobileInput(button.dataset.dir);
-        })
+            handleMobileInput(dir);
+        });
     });
 });
+
+function updateMobileControlsVisibility(){
+    const leftPad=document.getElementById("mobileControlsLeft");
+    const rightPad=document.getElementById("mobileControlsRight");
+    
+    if(!leftPad || !rightPad) return;
+    console.log("Updating mobile controls visibility");
+
+    if(gameStarted && !isLobbyVisible() && !isGameOverVisible() && !isSettingsVisible()){
+        leftPad.classList.add('show-controls');
+        rightPad.classList.add('show-controls');
+    } else {
+        leftPad.classList.remove('show-controls');
+        rightPad.classList.remove('show-controls');
+    }
+}
 
 function handleMobileInput(direction){
     if(!gameStarted) return;
@@ -1508,6 +1538,7 @@ function showGameOverPopup() {
     if (overlay) overlay.classList.remove("hidden");
     setPauseButtonVisible(false);
     setSoundButtonVisible(false);
+    updateMobileControlsVisibility();
 }
 
 function hideGameOverPopup(){
@@ -1549,7 +1580,7 @@ function goToLobby(){
     heartSpawnedAt=0;
 
     updateLobbyHighScore();
-
+    updateMobileControlsVisibility();
     showLobby();
 }
 
@@ -1604,6 +1635,7 @@ function startGame(){
 	}
 
     startLoop();
+    updateMobileControlsVisibility();
 }
 
 
@@ -1654,6 +1686,7 @@ function restartGame(){
 	}
 
     startLoop();
+    updateMobileControlsVisibility();
 }
 
 function loadImages(){
